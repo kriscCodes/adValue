@@ -1,4 +1,4 @@
-import { View, ScrollView, Dimensions } from 'react-native';
+import { View, ScrollView, Text, useWindowDimensions } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/AuthForm';
 import { AuthToggleButton } from '@/components/AuthToggleButton';
@@ -14,7 +14,7 @@ export default function AuthPage() {
     handleSignup,
   } = useAuth();
 
-  const { width } = Dimensions.get('window');
+  const { width } = useWindowDimensions();
   const isDesktop = width > 768;
 
   const handleSubmit = () => {
@@ -60,10 +60,9 @@ export default function AuthPage() {
 
   // Mobile Layout (full width)
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      <BrandingSection />
-
-      <View className="flex-1 justify-center items-center p-6">
+    <ScrollView className="flex-1 bg-blue-50">
+      <View className="flex-1 justify-center items-center px-6 pt-16 pb-6">
+        <Text className="text-5xl font-bold text-blue-600 mb-8">adValue</Text>
         <View className="w-full">
           <AuthToggleButton isSignup={mode === 'signup'} onToggle={toggleMode} />
           <AuthForm
