@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// refactor this to exist in .env files
 const API_BASE = 'http://127.0.0.1:8000';
+const AUTH_ACCESS_KEY = 'auth_access';
+const AUTH_REFRESH_KEY = 'auth_refresh';
 
 type AuthMode = 'login' | 'signup';
 
@@ -49,14 +53,15 @@ export function useAuth() {
         body: JSON.stringify({ email: state.email, password: state.password }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Login failed');
-        return;
-      }
-      router.replace({
-        pathname: '/customer-profile',
-        params: { email: data.user.email },
-      });
+			if (!res.ok) {
+				setError(data.error || 'Login failed');
+				return;
+			}
+			await AsyncStorage.multiSet([
+				[AUTH_ACCESS_KEY, data.access],
+				[AUTH_REFRESH_KEY, data.refresh],
+			]);
+			router.replace({ pathname: '/customer-profile' });
     } catch {
       setError('Network error');
     } finally {

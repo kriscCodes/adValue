@@ -6,6 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
 
 # This fetched customer model
 User = get_user_model() 
@@ -75,3 +76,17 @@ class LoginView(APIView):
             )
             
         return Response(get_tokens_for_user(user))
+   
+class profileView(APIView):
+    #Return the current authenticated user's info only if they are authenticated, to fill profile.
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            "id": user.customer_id,
+            "email": user.customer_email,
+            "first_name": user.customer_first_name,
+            "last_name": user.customer_last_name,
+            "location_enabled": user.location_enabled,
+        })
