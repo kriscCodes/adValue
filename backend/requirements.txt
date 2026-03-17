@@ -3,4 +3,6 @@ psycopg2-binary
 python-dotenv
 dj_database_url
 django-cors-headers
+djangorestframework
+djangorestframework-simplejwt
 pymysql
