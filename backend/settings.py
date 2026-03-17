@@ -82,7 +82,10 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'USER_ID_FIELD': 'customer_id',
 }
+
+AUTH_USER_MODEL = "accounts.Customer"
 
 ROOT_URLCONF = 'backend.urls'
 
