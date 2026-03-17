@@ -1,4 +1,5 @@
 import { View, Text, Pressable } from 'react-native';
+import { AntDesign } from '@expo/vector-icons';
 import { AuthTextInput } from './AuthTextInput';
 
 interface AuthFormProps {
@@ -120,9 +121,10 @@ export function AuthForm({
       </View>
 
       {/* Google Button */}
-      <Pressable className="w-full border-2 border-gray-300 py-3 rounded-full">
+      <Pressable className="w-full border-2 border-gray-300 py-3 rounded-full flex-row items-center justify-center gap-2">
+        <AntDesign name="google" size={20} color="#4285F4" />
         <Text className="text-center text-gray-800 font-semibold">
-          🔍 Continue with Google
+          Continue with Google
         </Text>
       </Pressable>
     </View>
