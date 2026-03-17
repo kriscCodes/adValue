@@ -15,7 +15,7 @@ def get_tokens_for_user(user):
     return {
         "refresh": str(refresh),
         "access": str(refresh.access_token),
-        "user": {"id": user.id, "email": user.customer_email},
+        "user": {"id": user.customer_id, "email": user.customer_email},
     }
 
 
