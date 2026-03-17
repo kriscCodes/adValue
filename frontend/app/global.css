@@ -2,3 +2,10 @@
 @import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css";
 @import "nativewind/theme";
+
+@font-face {
+  font-family: 'ITF Devanagari Marathi';
+  src: url('./assets/fonts/ITFDevanagariMarathi-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
