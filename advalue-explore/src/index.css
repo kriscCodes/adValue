@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* Leaflet map styles */
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
+:root {
+  height: 100%;
+  overflow: hidden; /* Prevent default scrolling */
+}
+
+body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  z-index: 1;
+}
+
+/* This fixes the tile 'gap' issue seen in your screenshot */
+.leaflet-tile-pane {
+  filter: grayscale(10%) brightness(105%);
+}
