@@ -37,11 +37,13 @@ export default function CustomerSignup() {
       {/* Logo */}
       <Text
         style={{
-          fontFamily: 'ITF Devanagari Marathi',
-          fontSize: 32,
+          fontFamily: 'GalaferaMedium',
+          fontSize: 38,
           color: '#2A5CC0',
           textAlign: 'center',
-          marginBottom: 32,
+          marginBottom: 24,
+          fontWeight: '900',
+          letterSpacing: 2,
         }}
       >
         adValue
