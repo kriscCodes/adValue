@@ -8,7 +8,11 @@ export default function RoleSelectPage() {
   const isDesktop = width > 768;
 
   const handleSelect = (role: 'customer' | 'business') => {
-    router.push({ pathname: '/auth', params: { role } });
+    if (role === 'business') {
+      router.push('/business-auth');
+    } else {
+      router.push('/auth');
+    }
   };
 
   if (isDesktop) {
