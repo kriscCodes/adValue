@@ -1,112 +1,313 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useMemo, useState } from 'react';
+import {
+  Image,
+  Modal,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import MapView, { Marker, Region } from 'react-native-maps';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+type Business = {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+  rating: number;
+  type: string;
+  img: string;
+};
 
-export default function TabTwoScreen() {
+/* Refactor for API usage, cards, and popups later but good for now */
+
+const BUSINESSES: Business[] = [
+  {
+    id: 1,
+    name: 'Italian Bistro',
+    lat: 40.852,
+    lng: -73.895,
+    rating: 4.5,
+    type: 'Restaurant',
+    img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600',
+  },
+  {
+    id: 2,
+    name: "Bryan's Bakery",
+    lat: 40.862,
+    lng: -73.898,
+    rating: 4.8,
+    type: 'Bakery',
+    img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600',
+  },
+];
+
+const INITIAL_REGION: Region = {
+  latitude: 40.855,
+  longitude: -73.89,
+  latitudeDelta: 0.05,
+  longitudeDelta: 0.05,
+};
+
+export default function ExploreScreen() {
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [search, setSearch] = useState('');
+
+  const filteredBusinesses = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) {
+      return BUSINESSES;
+    }
+    return BUSINESSES.filter(
+      (business) =>
+        business.name.toLowerCase().includes(term) || business.type.toLowerCase().includes(term),
+    );
+  }, [search]);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.brand}>adValue</Text>
+        <View style={styles.searchWrap}>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchInput}
+            placeholder="Search in The Bronx"
+            placeholderTextColor="#8B94A6"
+          />
+        </View>
+      </View>
+
+      <View style={styles.mapWrap}>
+        <MapView style={styles.map} initialRegion={INITIAL_REGION}>
+          {filteredBusinesses.map((business) => (
+            <Marker
+              key={business.id}
+              coordinate={{ latitude: business.lat, longitude: business.lng }}
+              title={business.name}
+              description={business.type}
+              onPress={() => setSelectedBusiness(business)}
+            />
+          ))}
+        </MapView>
+
+        <View style={styles.cardsOverlay}>
+          <View style={styles.cardsHeader}>
+            <Text style={styles.cardsTitle}>Nearby in The Bronx</Text>
+            <Pressable>
+              <Text style={styles.viewAll}>View All</Text>
+            </Pressable>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {filteredBusinesses.map((business) => (
+              <Pressable
+                key={business.id}
+                style={styles.card}
+                onPress={() => setSelectedBusiness(business)}>
+                <Image source={{ uri: business.img }} style={styles.cardImage} />
+                <View style={styles.cardContent}>
+                  <Text style={styles.cardName}>{business.name}</Text>
+                  <Text style={styles.cardType}>{business.type}</Text>
+                  <Text style={styles.cardRating}>★ {business.rating}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+
+      <Modal visible={!!selectedBusiness} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Pressable onPress={() => setSelectedBusiness(null)} style={styles.closeButton}>
+              <Text style={styles.closeText}>X</Text>
+            </Pressable>
+            {selectedBusiness ? (
+              <>
+                <Image source={{ uri: selectedBusiness.img }} style={styles.modalImage} />
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>{selectedBusiness.name}</Text>
+                  <Text style={styles.modalRating}>
+                    ★ {selectedBusiness.rating} ({selectedBusiness.type})
+                  </Text>
+                  <Text style={styles.modalInfo}>97 West Fordham Road, Bronx</Text>
+                  <Text style={styles.modalInfo}>(212) 555-0111</Text>
+                  <Pressable style={styles.ctaButton}>
+                    <Text style={styles.ctaText}>Get Directions</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  titleContainer: {
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6EAF1',
+    backgroundColor: '#FFFFFF',
+    gap: 10,
+  },
+  brand: {
+    color: '#2563EB',
+    fontSize: 26,
+    fontWeight: '900',
+    fontStyle: 'italic',
+  },
+  searchWrap: {
+    width: '100%',
+  },
+  searchInput: {
+    backgroundColor: '#F5F7FB',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+  },
+  mapWrap: {
+    flex: 1,
+    position: 'relative',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardsOverlay: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 14,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E6EAF1',
+  },
+  cardsHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  cardsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  viewAll: {
+    color: '#2563EB',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  card: {
+    width: 230,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E6EAF1',
+    marginRight: 10,
+    overflow: 'hidden',
+  },
+  cardImage: {
+    width: '100%',
+    height: 95,
+  },
+  cardContent: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  cardName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  cardType: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  cardRating: {
+    fontSize: 12,
+    color: '#D97706',
+    fontWeight: '700',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    zIndex: 2,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeText: {
+    color: '#111827',
+    fontWeight: '700',
+  },
+  modalImage: {
+    width: '100%',
+    height: 170,
+  },
+  modalContent: {
+    padding: 16,
     gap: 8,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  modalRating: {
+    fontSize: 14,
+    color: '#D97706',
+    fontWeight: '600',
+  },
+  modalInfo: {
+    fontSize: 13,
+    color: '#4B5563',
+  },
+  ctaButton: {
+    marginTop: 8,
+    backgroundColor: '#2563EB',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  ctaText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
