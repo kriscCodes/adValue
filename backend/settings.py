@@ -86,6 +86,7 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = "accounts.Customer"
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
 ROOT_URLCONF = 'backend.urls'
 
