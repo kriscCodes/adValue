@@ -12,6 +12,7 @@ export default function AuthPage() {
     updateField,
     handleLogin,
     handleSignup,
+    handleGoogleLogin,
   } = useAuth();
 
   const { width } = useWindowDimensions();
@@ -51,6 +52,7 @@ export default function AuthPage() {
               onFirstNameChange={(text) => updateField('firstName', text)}
               onLastNameChange={(text) => updateField('lastName', text)}
               onSubmit={handleSubmit}
+              onGoogleSubmit={handleGoogleLogin}
             />
           </ScrollView>
         </View>
@@ -80,6 +82,7 @@ export default function AuthPage() {
             onFirstNameChange={(text) => updateField('firstName', text)}
             onLastNameChange={(text) => updateField('lastName', text)}
             onSubmit={handleSubmit}
+            onGoogleSubmit={handleGoogleLogin}
           />
         </View>
       </View>
