@@ -17,6 +17,7 @@ interface AuthFormProps {
   onFirstNameChange: (text: string) => void;
   onLastNameChange: (text: string) => void;
   onSubmit: () => void;
+  onGoogleSubmit: () => void;
 }
 
 export function AuthForm({
@@ -34,6 +35,7 @@ export function AuthForm({
   onFirstNameChange,
   onLastNameChange,
   onSubmit,
+  onGoogleSubmit,
 }: AuthFormProps) {
   return (
     <View className="w-full">
@@ -121,7 +123,11 @@ export function AuthForm({
       </View>
 
       {/* Google Button */}
-      <Pressable className="w-full border-2 border-gray-300 py-3 rounded-full flex-row items-center justify-center gap-2">
+      <Pressable
+        onPress={onGoogleSubmit}
+        disabled={loading}
+        className="w-full border-2 border-gray-300 py-3 rounded-full flex-row items-center justify-center gap-2"
+      >
         <AntDesign name="google" size={20} color="#4285F4" />
         <Text className="text-center text-gray-800 font-semibold">
           Continue with Google
