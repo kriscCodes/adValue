@@ -6,3 +6,5 @@ django-cors-headers
 djangorestframework
 djangorestframework-simplejwt
 pymysql
+google-auth
+requests

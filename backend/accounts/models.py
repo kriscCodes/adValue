@@ -32,7 +32,12 @@ class Customer(AbstractBaseUser):
     customer_first_name = models.CharField(max_length=150)
     customer_last_name = models.CharField(max_length=150)
     customer_email = models.EmailField(unique=True)
-    customer_password = models.CharField(max_length=128) 
+    customer_password = models.CharField(max_length=128)
+    #added new fields to detemine auth flow depdning on user sign up method 
+    auth_provider = models.CharField(max_length=20, default="local")
+    #allows application to verify google email
+    google_subject_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    email_verified = models.BooleanField(default=False)
     location_enabled = models.BooleanField(default=False)
 
     objects = CustomerManager()
