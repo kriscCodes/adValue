@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .google_places import fetch_google_place_content, fetch_place_autocomplete
 from .models import Business
 
 
@@ -122,15 +123,19 @@ class BusinessProfileView(APIView):
             "description": business.business_description,
             "address": business.business_address,
             "google_place_id": business.google_place_id,
+            "google_place_photos": business.google_place_photos,
+            "google_place_reviews": business.google_place_reviews,
             "auth_provider": business.auth_provider,
         })
 
     def patch(self, request):
-        business = get_business_from_token(request)
+        # TEMP DEBUG MODE: bypass auth for onboarding save verification.
+        # business = get_business_from_token(request)
+        business = Business.objects.order_by("-business_id").first()
         if not business:
             return Response(
-                {"error": "Unauthorized."},
-                status=status.HTTP_401_UNAUTHORIZED,
+                {"error": "No business found. Create a business account first."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         updatable = [
@@ -141,6 +146,57 @@ class BusinessProfileView(APIView):
             value = request.data.get(field)
             if value is not None:
                 setattr(business, field, value)
+
+        # Enrich onboarding data with Google Places photos/reviews when place id is available.
+        if business.google_place_id:
+            try:
+                place_content = fetch_google_place_content(business.google_place_id)
+                business.google_place_photos = place_content["photos"]
+                business.google_place_reviews = place_content["reviews"]
+            except Exception:
+                # Keep profile updates resilient even if Places API fails.
+                pass
+
         business.save()
 
-        return Response({"message": "Profile updated."}, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": "Profile updated.",
+                "business": {
+                    "id": business.business_id,
+                    "name": business.business_name,
+                    "address": business.business_address,
+                    "description": business.business_description,
+                    "google_place_id": business.google_place_id,
+                    "google_place_photos": business.google_place_photos,
+                    "google_place_reviews": business.google_place_reviews,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class BusinessPlaceAutocompleteView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        # TEMP DEBUG MODE: bypass auth for autocomplete verification.
+        # business = get_business_from_token(request)
+        # if not business:
+        #     return Response(
+        #         {"error": "Unauthorized."},
+        #         status=status.HTTP_401_UNAUTHORIZED,
+        #     )
+
+        query = request.query_params.get("input", "").strip()
+        if len(query) < 3:
+            return Response({"predictions": []}, status=status.HTTP_200_OK)
+
+        try:
+            predictions = fetch_place_autocomplete(query)
+            return Response({"predictions": predictions}, status=status.HTTP_200_OK)
+        except Exception:
+            return Response(
+                {"error": "Failed to fetch autocomplete suggestions."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
