@@ -23,10 +23,10 @@ import {
   Bookmark 
 } from 'lucide-react-native';
 
-export default function CustomerProfile() {
+export default function BusinessProfile() {
   // State for text inputs
   const [searchQuery, setSearchQuery] = useState("");
-  const [email, setEmail] = useState("alex.johnson@example.com");
+  const [email, setEmail] = useState("business.name@example.com");
   const [password, setPassword] = useState("password123"); // Hidden by secureTextEntry
 
   // State for toggles
@@ -62,7 +62,7 @@ export default function CustomerProfile() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.headerName}>Alex Johnson</Text>
+        <Text style={styles.headerName}>Business Name</Text>
 
         {/* Account Settings Card */}
         <View style={styles.card}>
