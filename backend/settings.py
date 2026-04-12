@@ -18,11 +18,7 @@ from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-BACKEND_DIR = BASE_DIR / "backend"
-
-# Load env from both common locations so runserver works consistently.
-load_dotenv(BASE_DIR / ".env")
-load_dotenv(BACKEND_DIR / ".env", override=True)
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -34,10 +30,7 @@ SECRET_KEY = 'django-insecure-k6t^x&0&knc5hd($is1xd=hcl&l3ez4^^pjmh_8%-15cqri@55
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-if DEBUG:
-    ALLOWED_HOSTS = ["*"]
-else:
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -76,8 +69,6 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:19006',
     'http://127.0.0.1:19006',
 ]
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
 # to make sure auth is required by default for all views/apis
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -96,7 +87,6 @@ SIMPLE_JWT = {
 
 AUTH_USER_MODEL = "accounts.Customer"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -122,15 +112,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-database_url = os.environ.get("DATABASE_URL", "").strip()
-if not database_url:
-    raise RuntimeError(
-        "DATABASE_URL is not set. Add it to backend/.env or export it before running Django."
-    )
-
 DATABASES = {
-    "default": dj_database_url.parse(
-        database_url,
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
         conn_max_age=600,
         conn_health_checks=True,
     )

@@ -1,12 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import GoogleLoginView, LoginView, RegisterView, profileView
-from .business_views import (
-    BusinessRegisterView,
-    BusinessLoginView,
-    BusinessProfileView,
-    BusinessPlaceAutocompleteView,
-)
+from .business_views import BusinessRegisterView, BusinessLoginView, BusinessProfileView
 
 urlpatterns = [
     # Customer auth
@@ -20,9 +15,4 @@ urlpatterns = [
     path("business/register/", BusinessRegisterView.as_view(), name="business_register"),
     path("business/login/", BusinessLoginView.as_view(), name="business_login"),
     path("business/profile/", BusinessProfileView.as_view(), name="business_profile"),
-    path(
-        "business/places/autocomplete/",
-        BusinessPlaceAutocompleteView.as_view(),
-        name="business_places_autocomplete",
-    ),
 ]

@@ -103,7 +103,6 @@ export default function ExploreScreenWeb() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.brand}>adValue</Text>
         <View style={styles.searchWrap}>
           <TextInput
             value={search}
@@ -208,12 +207,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E6EAF1',
     backgroundColor: '#FFFFFF',
     gap: 10,
-  },
-  brand: {
-    color: '#2563EB',
-    fontSize: 26,
-    fontWeight: '900',
-    fontStyle: 'italic',
   },
   searchWrap: {
     width: '100%',
