@@ -15,10 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-// Base URL for the Django API. Use your machine's IP (e.g. http://192.168.1.x:8000)
-// when testing on a physical device; 127.0.0.1 works for simulator/emulator.
-const API_BASE = 'http://127.0.0.1:8000';
+import { API_BASE } from '@/lib/auth-config';
 
 type ContentCreator = {
   name: string | null;
@@ -150,8 +147,8 @@ export default function ContentCreatorsScreen() {
 
       {/* Link: Expo Router navigation. Lets user go back without hardcoding the route. */}
       <View style={styles.footer}>
-        <Link href="/(tabs)" asChild>
-          <ThemedText type="link">← Back to tabs</ThemedText>
+        <Link href="/home" asChild>
+          <ThemedText type="link">← Back to home</ThemedText>
         </Link>
       </View>
     </ThemedView>
