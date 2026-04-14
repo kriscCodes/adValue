@@ -5,42 +5,114 @@ import {
   View,
   TextInput,
   TouchableOpacity,
-  Switch,
-  SafeAreaView,
   ScrollView,
   Platform,
 } from 'react-native';
-import {
-  User,
-  Mail,
-  Lock,
-  Settings,
-  MapPin,
-  Bell,
-  AlertCircle,
-  LogOut,
-  Search,
-  Compass,
-  Bookmark,
-} from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Bell, Search, Settings, MoreHorizontal } from 'lucide-react-native';
+import { router } from 'expo-router';
+import Svg, { Polyline, Line, Text as SvgText } from 'react-native-svg';
+
+const PLATFORMS = ['Instagram', 'Youtube', 'Tiktok'];
+
+const CREATORS = [
+  { name: 'Faikar', views: '10k', platform: 'Tiktok' },
+  { name: 'Kris', views: '1k', platform: 'Instagram' },
+  { name: 'Jasmine', views: '100k', platform: 'Tiktok' },
+  { name: 'Jasmine', views: '100k', platform: 'Tiktok' },
+];
+
+// Simple placeholder line chart drawn with SVG
+function ViewsChart() {
+  const W = 280;
+  const H = 180;
+  const padL = 36;
+  const padB = 24;
+  const padT = 8;
+  const padR = 8;
+  const chartW = W - padL - padR;
+  const chartH = H - padB - padT;
+
+  // Dummy data points (0–100 range)
+  const data = [10, 30, 20, 50, 40, 60, 45];
+  const maxVal = 100;
+  const points = data
+    .map((v, i) => {
+      const x = padL + (i / (data.length - 1)) * chartW;
+      const y = padT + chartH - (v / maxVal) * chartH;
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  const yLabels = [0, 25, 50, 75, 100];
+
+  return (
+    <Svg width={W} height={H}>
+      {/* Y-axis gridlines & labels */}
+      {yLabels.map((label) => {
+        const y = padT + chartH - (label / maxVal) * chartH;
+        return (
+          <React.Fragment key={label}>
+            <Line
+              x1={padL}
+              y1={y}
+              x2={W - padR}
+              y2={y}
+              stroke="#e2e8f0"
+              strokeWidth="1"
+            />
+            <SvgText
+              x={padL - 4}
+              y={y + 4}
+              fontSize="8"
+              fill="#94a3b8"
+              textAnchor="end">
+              {label}
+            </SvgText>
+          </React.Fragment>
+        );
+      })}
+      {/* X-axis label */}
+      <SvgText
+        x={W / 2}
+        y={H - 4}
+        fontSize="9"
+        fill="#94a3b8"
+        textAnchor="middle">
+        Days
+      </SvgText>
+      {/* Y-axis label */}
+      <SvgText
+        x={8}
+        y={H / 2}
+        fontSize="9"
+        fill="#94a3b8"
+        textAnchor="middle"
+        transform={`rotate(-90, 8, ${H / 2})`}>
+        Views
+      </SvgText>
+      {/* Line */}
+      <Polyline
+        points={points}
+        fill="none"
+        stroke="#3b82f6"
+        strokeWidth="2"
+      />
+    </Svg>
+  );
+}
 
 export default function BusinessDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [email, setEmail] = useState('business.name@example.com');
-  const [password, setPassword] = useState('password123');
-
-  const [locationEnabled, setLocationEnabled] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-
   const showInlineNav = Platform.OS !== 'web';
 
   return (
     <SafeAreaView style={styles.container}>
-      {showInlineNav ? (
+      {showInlineNav && (
         <View style={styles.navbar}>
           <Text style={styles.logo}>adValue</Text>
           <View style={styles.searchBar}>
-            <Search size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+            <Search size={14} color="#94a3b8" style={{ marginRight: 6 }} />
             <TextInput
               placeholder="Search The Bronx..."
               placeholderTextColor="#94a3b8"
@@ -50,108 +122,74 @@ export default function BusinessDashboard() {
             />
           </View>
           <View style={styles.navIcons}>
-            <View style={styles.navItem}>
-              <Compass size={20} color="#64748b" />
-              <Text style={styles.navText}>Explore</Text>
+            <Bell size={20} color="#64748b" style={{ marginRight: 12 }} />
+            <View style={styles.menuLines}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={styles.menuLine} />
+              ))}
             </View>
-            <View style={styles.navItem}>
-              <Bookmark size={20} color="#64748b" />
-              <Text style={styles.navText}>Saved</Text>
-            </View>
-            <View style={styles.avatarCircle} />
+            <TouchableOpacity onPress={() => router.push('/business/profile')}>
+              <View style={styles.avatarCircle} />
+            </TouchableOpacity>
           </View>
         </View>
-      ) : null}
+      )}
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.headerName}>Business Name</Text>
+        {/* Business name */}
+        <Text style={styles.businessName}>Blue Doors Darmawangsa</Text>
 
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <User size={20} color="#2563eb" />
-            <Text style={styles.cardTitle}>Account Settings</Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
-            <View style={styles.inputWrapper}>
-              <Mail size={18} color="#94a3b8" />
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+        {/* Platform tags */}
+        <View style={styles.tagsRow}>
+          {PLATFORMS.map((p) => (
+            <View key={p} style={styles.tag}>
+              <Text style={styles.tagText}>{p}</Text>
             </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputWrapper}>
-              <Lock size={18} color="#94a3b8" />
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={true}
-              />
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={() => alert(`Saved! Email is now: ${email}`)}
-          >
-            <Text style={styles.saveButtonText}>Save Changes</Text>
-          </TouchableOpacity>
+          ))}
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Settings size={20} color="#2563eb" />
-            <Text style={styles.cardTitle}>App Preferences</Text>
+        {/* Chart + Stats row */}
+        <View style={styles.statsRow}>
+          {/* Chart card */}
+          <View style={[styles.card, styles.chartCard]}>
+            <ViewsChart />
           </View>
 
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <MapPin size={20} color="#3b82f6" />
-              <View style={styles.settingTextContent}>
-                <Text style={styles.settingLabel}>Location Services</Text>
-                <Text style={styles.settingSubtext}>Improve ad relevance based on your area</Text>
-              </View>
+          {/* Total views card */}
+          <View style={[styles.card, styles.viewsCard]}>
+            <View style={styles.viewsHeader}>
+              <Text style={styles.viewsTitle}>Total views</Text>
+              <Settings size={16} color="#64748b" />
             </View>
-            <Switch
-              value={locationEnabled}
-              onValueChange={setLocationEnabled}
-              trackColor={{ false: '#e2e8f0', true: '#3b82f6' }}
-            />
-          </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Bell size={20} color="#3b82f6" />
-              <View style={styles.settingTextContent}>
-                <Text style={styles.settingLabel}>Push Notifications</Text>
-                <Text style={styles.settingSubtext}>Daily summaries and alerts</Text>
+            <Text style={styles.viewsCount}>0</Text>
+            <View style={styles.divider} />
+            {PLATFORMS.map((p) => (
+              <View key={p} style={styles.platformRow}>
+                <Text style={styles.platformName}>{p}</Text>
+                <Text style={styles.platformCount}>0</Text>
               </View>
-            </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{ false: '#e2e8f0', true: '#3b82f6' }}
-            />
+            ))}
           </View>
         </View>
 
-        <TouchableOpacity style={styles.reportButton}>
-          <AlertCircle size={18} color="#ef4444" style={{ marginRight: 8 }} />
-          <Text style={styles.reportButtonText}>Report a Problem</Text>
-        </TouchableOpacity>
+        {/* Content Created */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Content Created</Text>
+          <View style={styles.creatorsGrid}>
+            {CREATORS.map((creator, idx) => (
+              <View key={idx} style={styles.creatorCard}>
+                <View style={styles.creatorImage} />
+                <Text style={styles.creatorName}>{creator.name}</Text>
+                <Text style={styles.creatorViews}>Views: {creator.views}</Text>
+                <Text style={styles.creatorPlatform}>{creator.platform}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
 
-        <TouchableOpacity style={styles.signOutButton}>
-          <LogOut size={18} color="#475569" style={{ marginRight: 8 }} />
-          <Text style={styles.signOutText}>Sign Out of adValue</Text>
+        {/* More button */}
+        <TouchableOpacity style={styles.moreButton}>
+          <MoreHorizontal size={20} color="#64748b" />
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -161,34 +199,35 @@ export default function BusinessDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f7ff',
+    backgroundColor: '#eff6ff',
   },
   navbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
   logo: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1e40af',
+    fontSize: 18,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: '#2563eb',
   },
   searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
-    marginHorizontal: 15,
-    paddingHorizontal: 12,
-    height: 36,
+    marginHorizontal: 12,
+    paddingHorizontal: 10,
+    height: 32,
     borderRadius: 8,
   },
   searchInput: {
-    fontSize: 14,
+    fontSize: 13,
     flex: 1,
     color: '#64748b',
   },
@@ -196,146 +235,163 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 15,
+  menuLines: {
+    marginRight: 12,
+    gap: 3,
   },
-  navText: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#64748b',
-    display: 'none',
+  menuLine: {
+    width: 18,
+    height: 2,
+    backgroundColor: '#64748b',
+    borderRadius: 1,
+    marginVertical: 1,
   },
   avatarCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: '#fb923c',
   },
   scrollContent: {
-    padding: 24,
-    alignItems: 'center',
+    padding: 20,
   },
-  headerName: {
-    fontSize: 28,
+  businessName: {
+    fontSize: 24,
     fontWeight: '700',
     color: '#1e293b',
-    marginVertical: 40,
+    marginBottom: 12,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  tag: {
+    backgroundColor: '#3b82f6',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+  },
+  tagText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
   },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 24,
-    width: '100%',
-    maxWidth: 500,
-    marginBottom: 20,
+    padding: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  cardHeader: {
-    flexDirection: 'row',
+  chartCard: {
+    flex: 1.8,
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'center',
+    paddingVertical: 20,
   },
-  cardTitle: {
-    fontSize: 18,
+  viewsCard: {
+    flex: 1,
+  },
+  viewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  viewsTitle: {
+    fontSize: 15,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  viewsCount: {
+    fontSize: 40,
     fontWeight: '700',
     color: '#1e293b',
-    marginLeft: 10,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569',
     marginBottom: 8,
   },
-  inputWrapper: {
+  divider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 8,
+  },
+  platformRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 48,
-  },
-  input: {
-    flex: 1,
-    marginLeft: 10,
-    color: '#64748b',
-    fontSize: 15,
-  },
-  saveButton: {
-    backgroundColor: '#3b82f6',
-    height: 48,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    marginBottom: 4,
   },
-  settingInfo: {
+  platformName: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  platformCount: {
+    fontSize: 14,
+    color: '#1e293b',
+    fontWeight: '600',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+  creatorsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+    flexWrap: 'nowrap',
+    gap: 16,
   },
-  settingTextContent: {
-    marginLeft: 12,
+  creatorCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
     flex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  settingLabel: {
-    fontSize: 15,
+  creatorImage: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  creatorName: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#1e293b',
   },
-  settingSubtext: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  reportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    maxWidth: 500,
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#fee2e2',
-    backgroundColor: '#fff',
-    marginBottom: 30,
-  },
-  reportButtonText: {
-    color: '#ef4444',
-    fontWeight: '600',
-  },
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  signOutText: {
+  creatorViews: {
+    fontSize: 11,
     color: '#475569',
-    fontWeight: '500',
+  },
+  creatorPlatform: {
+    fontSize: 11,
+    color: '#94a3b8',
+  },
+  moreButton: {
+    alignSelf: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: 20,
   },
 });

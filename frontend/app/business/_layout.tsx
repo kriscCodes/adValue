@@ -39,6 +39,15 @@ export default function BusinessLayout() {
             ),
           }}
         />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="person-circle-outline" size={size ?? 26} color={color} />
+            ),
+          }}
+        />
       </Tabs>
     </View>
   );

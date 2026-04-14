@@ -4,8 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import { Platform } from 'react-native';
-import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
 
+// refactor this to exist in .env files
+const API_BASE = 'http://127.0.0.1:8000';
+const AUTH_ACCESS_KEY = 'auth_access';
+const AUTH_REFRESH_KEY = 'auth_refresh';
 const GOOGLE_WEB_REDIRECT_URI = AuthSession.makeRedirectUri();
 const GOOGLE_NATIVE_REDIRECT_URI = 'https://auth.expo.io/@krisc2004/frontend';
 const GOOGLE_REDIRECT_URI =
@@ -103,7 +106,7 @@ export function useAuth() {
 				[AUTH_ACCESS_KEY, data.access],
 				[AUTH_REFRESH_KEY, data.refresh],
 			]);
-			router.replace({ pathname: '/home' });
+			router.replace({ pathname: '/customer-profile' });
     } catch {
       setError('Network error');
     } finally {
@@ -197,7 +200,7 @@ export function useAuth() {
         [AUTH_ACCESS_KEY, data.access],
         [AUTH_REFRESH_KEY, data.refresh],
       ]);
-      router.replace({ pathname: '/home' });
+      router.replace({ pathname: '/customer-profile' });
     } catch {
       setError('Network error');
     } finally {
