@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -9,8 +10,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { BUSINESSES, type Business } from './explore-shared';
+import { useSavedBusinesses } from '@/hooks/useSavedBusinesses';
 
 const LEAFLET_CSS_ID = 'advalue-leaflet-css';
 const LEAFLET_CSS_HREF = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
@@ -46,6 +49,7 @@ export default function ExploreScreenWeb() {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [search, setSearch] = useState('');
   const [leafletMods, setLeafletMods] = useState<LeafletModules | null>(null);
+  const { loading: savedLoading, isSaved, toggleSaved } = useSavedBusinesses();
 
   useEffect(() => {
     let cancelled = false;
@@ -170,6 +174,22 @@ export default function ExploreScreenWeb() {
             <Pressable onPress={() => setSelectedBusiness(null)} style={styles.closeButton}>
               <Text style={styles.closeText}>X</Text>
             </Pressable>
+            {selectedBusiness ? (
+              <Pressable
+                onPress={() => toggleSaved(selectedBusiness.id)}
+                style={styles.favoriteButton}
+                disabled={savedLoading}>
+                {savedLoading ? (
+                  <ActivityIndicator size="small" color="#2563EB" />
+                ) : (
+                  <Ionicons
+                    name={isSaved(selectedBusiness.id) ? 'heart' : 'heart-outline'}
+                    size={18}
+                    color={isSaved(selectedBusiness.id) ? '#EF4444' : '#64748B'}
+                  />
+                )}
+              </Pressable>
+            ) : null}
             {selectedBusiness ? (
               <>
                 <Image source={{ uri: selectedBusiness.img }} style={styles.modalImage} />
@@ -311,6 +331,18 @@ const styles = StyleSheet.create({
   closeButton: {
     position: 'absolute',
     right: 10,
+    top: 10,
+    zIndex: 2,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteButton: {
+    position: 'absolute',
+    right: 46,
     top: 10,
     zIndex: 2,
     backgroundColor: 'rgba(255,255,255,0.9)',

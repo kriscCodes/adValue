@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.db import IntegrityError
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -10,6 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from .models import SavedBusiness
 
 # This fetched customer model
 User = get_user_model() 
@@ -181,3 +183,103 @@ class profileView(APIView):
             "last_name": user.customer_last_name,
             "location_enabled": user.location_enabled,
         })
+
+
+class SavedBusinessesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        saved = SavedBusiness.objects.filter(customer=request.user).order_by("-created_at")
+        return Response(
+            {
+                "saved_businesses": [
+                    {
+                        "id": item.saved_business_id,
+                        "business_external_id": item.business_external_id,
+                        "name": item.business_name,
+                        "type": item.business_type,
+                        "img": item.business_img,
+                        "rating": item.business_rating,
+                        "lat": item.business_lat,
+                        "lng": item.business_lng,
+                    }
+                    for item in saved
+                ]
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        business_external_id = request.data.get("business_external_id")
+        business_name = request.data.get("name")
+
+        if business_external_id is None or not business_name:
+            return Response(
+                {"error": "business_external_id and name are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            business_external_id = int(business_external_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "business_external_id must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            saved = SavedBusiness.objects.create(
+                customer=request.user,
+                business_external_id=business_external_id,
+                business_name=business_name,
+                business_type=request.data.get("type", ""),
+                business_img=request.data.get("img", ""),
+                business_rating=float(request.data.get("rating", 0) or 0),
+                business_lat=float(request.data.get("lat", 0) or 0),
+                business_lng=float(request.data.get("lng", 0) or 0),
+            )
+        except IntegrityError:
+            return Response(
+                {"message": "Business already saved."},
+                status=status.HTTP_200_OK,
+            )
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "Invalid numeric values for rating/lat/lng."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "id": saved.saved_business_id,
+                "business_external_id": saved.business_external_id,
+                "name": saved.business_name,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request):
+        business_external_id = request.data.get("business_external_id")
+        if business_external_id is None:
+            return Response(
+                {"error": "business_external_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            business_external_id = int(business_external_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "business_external_id must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        deleted_count, _ = SavedBusiness.objects.filter(
+            customer=request.user,
+            business_external_id=business_external_id,
+        ).delete()
+
+        if deleted_count == 0:
+            return Response({"message": "Saved business not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({"message": "Saved business removed."}, status=status.HTTP_200_OK)

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -11,8 +12,10 @@ import {
   View,
 } from 'react-native';
 import MapView, { Marker, type Region } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
 
 import { BUSINESSES, type Business } from './explore-shared';
+import { useSavedBusinesses } from '@/hooks/useSavedBusinesses';
 
 const INITIAL_REGION: Region = {
   latitude: 40.855,
@@ -24,6 +27,7 @@ const INITIAL_REGION: Region = {
 export default function ExploreScreen() {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [search, setSearch] = useState('');
+  const { loading: savedLoading, isSaved, toggleSaved } = useSavedBusinesses();
 
   const filteredBusinesses = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -95,6 +99,22 @@ export default function ExploreScreen() {
             <Pressable onPress={() => setSelectedBusiness(null)} style={styles.closeButton}>
               <Text style={styles.closeText}>X</Text>
             </Pressable>
+            {selectedBusiness ? (
+              <Pressable
+                onPress={() => toggleSaved(selectedBusiness.id)}
+                style={styles.favoriteButton}
+                disabled={savedLoading}>
+                {savedLoading ? (
+                  <ActivityIndicator size="small" color="#2563EB" />
+                ) : (
+                  <Ionicons
+                    name={isSaved(selectedBusiness.id) ? 'heart' : 'heart-outline'}
+                    size={18}
+                    color={isSaved(selectedBusiness.id) ? '#EF4444' : '#64748B'}
+                  />
+                )}
+              </Pressable>
+            ) : null}
             {selectedBusiness ? (
               <>
                 <Image source={{ uri: selectedBusiness.img }} style={styles.modalImage} />
@@ -232,6 +252,18 @@ const styles = StyleSheet.create({
   closeButton: {
     position: 'absolute',
     right: 10,
+    top: 10,
+    zIndex: 2,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteButton: {
+    position: 'absolute',
+    right: 46,
     top: 10,
     zIndex: 2,
     backgroundColor: 'rgba(255,255,255,0.9)',

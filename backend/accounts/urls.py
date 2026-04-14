@@ -1,6 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import GoogleLoginView, LoginView, RegisterView, profileView
+from .views import GoogleLoginView, LoginView, RegisterView, profileView, SavedBusinessesView
 from .business_views import BusinessRegisterView, BusinessLoginView, BusinessProfileView
 
 urlpatterns = [
@@ -10,6 +10,7 @@ urlpatterns = [
     path("google/", GoogleLoginView.as_view(), name="google_login"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("profile/", profileView.as_view(), name="profile"),
+    path("saved-businesses/", SavedBusinessesView.as_view(), name="saved_businesses"),
 
     # Business auth
     path("business/register/", BusinessRegisterView.as_view(), name="business_register"),
