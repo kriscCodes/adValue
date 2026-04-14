@@ -2,10 +2,3 @@
 @import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css";
 @import "nativewind/theme";
-
-@font-face {
-  font-family: 'GalaferaMedium';
-  src: url('../assets/images/fonts/GalaferaMedium-V4xze.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}

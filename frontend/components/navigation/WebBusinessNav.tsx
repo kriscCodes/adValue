@@ -1,9 +1,10 @@
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { usePathname, router } from 'expo-router';
 
-const links: { href: '/business' | '/business/info'; label: string }[] = [
+const links: { href: '/business' | '/business/info' | '/business/profile'; label: string }[] = [
   { href: '/business', label: 'Dashboard' },
   { href: '/business/info', label: 'Store info' },
+  { href: '/business/profile', label: 'Profile' },
 ];
 
 export function WebBusinessNav() {

@@ -3,6 +3,7 @@ import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { useFonts } from 'expo-font';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-reanimated';
 import './global.css';
@@ -26,7 +27,7 @@ function getRequiredSession(pathname: string | null): 'public' | 'customer' | 'b
   if (!pathname || PUBLIC_PATHS.has(pathname)) {
     return 'public';
   }
-  if (pathname === '/business' || pathname.startsWith('/business/')) {
+  if (pathname === '/business' || pathname.startsWith('/business/') || pathname === '/home') {
     return 'business';
   }
   return 'customer';
@@ -36,6 +37,9 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const pathname = usePathname();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  useFonts({
+    GalaferaMedium: require('../assets/images/fonts/GalaferaMedium-V4xze.ttf'),
+  });
 
   useEffect(() => {
     let active = true;
