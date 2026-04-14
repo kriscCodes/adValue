@@ -68,3 +68,29 @@ class Business(models.Model):
 
     class Meta:
         db_table = "Business"
+
+
+class SavedBusiness(models.Model):
+    saved_business_id = models.AutoField(primary_key=True)
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="saved_businesses",
+    )
+    business_external_id = models.IntegerField()
+    business_name = models.CharField(max_length=255)
+    business_type = models.CharField(max_length=120, blank=True, default="")
+    business_img = models.URLField(blank=True, default="")
+    business_rating = models.FloatField(default=0)
+    business_lat = models.FloatField(default=0)
+    business_lng = models.FloatField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "SavedBusiness"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["customer", "business_external_id"],
+                name="unique_saved_business_per_customer",
+            )
+        ]
