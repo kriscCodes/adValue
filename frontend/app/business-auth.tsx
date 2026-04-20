@@ -2,6 +2,7 @@ import { View, Text, ScrollView, Pressable, useWindowDimensions } from 'react-na
 import { useBusinessAuth } from '@/hooks/useBusinessAuth';
 import { AuthTextInput } from '@/components/AuthTextInput';
 import { AuthToggleButton } from '@/components/AuthToggleButton';
+import { BackToRoleSelectBar } from '@/components/BackToRoleSelectBar';
 import { BrandingSection } from '@/components/BrandingSection';
 
 export default function BusinessAuthPage() {
@@ -114,7 +115,8 @@ export default function BusinessAuthPage() {
 
   return (
     <ScrollView className="flex-1 bg-gray-50">
-      <View className="flex-1 justify-center items-center px-6 pt-16 pb-6">
+      <View className="flex-1 justify-center items-center px-6 pb-6">
+        <BackToRoleSelectBar />
         <Text className="text-5xl font-bold text-blue-600 mb-8">adValue</Text>
         <View className="w-full">{form}</View>
       </View>

@@ -1,11 +1,15 @@
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 
 import { useSavedBusinesses } from '@/hooks/useSavedBusinesses';
 
 export default function SavedScreen() {
-  const { savedBusinesses, isSaved, toggleSaved } = useSavedBusinesses();
+  const { savedBusinesses, loading: savedLoading, isSaved, toggleSaved } = useSavedBusinesses();
+  const [selectedBusiness, setSelectedBusiness] = useState<(typeof savedBusinesses)[number] | null>(
+    null
+  );
 
   return (
     <View style={styles.container}>
@@ -25,7 +29,10 @@ export default function SavedScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           {savedBusinesses.map((business) => (
-            <View key={business.id} style={styles.card}>
+            <Pressable
+              key={business.id}
+              style={styles.card}
+              onPress={() => setSelectedBusiness(business)}>
               <Image source={{ uri: business.img }} style={styles.image} />
               <View style={styles.cardBody}>
                 <View style={styles.cardTopRow}>
@@ -46,10 +53,52 @@ export default function SavedScreen() {
                 </View>
                 <Text style={styles.rating}>★ {business.rating}</Text>
               </View>
-            </View>
+            </Pressable>
           ))}
         </ScrollView>
       )}
+
+      <Modal visible={!!selectedBusiness} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Pressable onPress={() => setSelectedBusiness(null)} style={styles.closeButton}>
+              <Text style={styles.closeText}>X</Text>
+            </Pressable>
+            {selectedBusiness ? (
+              <Pressable
+                onPress={() => toggleSaved(selectedBusiness.id)}
+                style={styles.favoriteButton}
+                disabled={savedLoading}>
+                {savedLoading ? (
+                  <ActivityIndicator size="small" color="#2563EB" />
+                ) : (
+                  <Ionicons
+                    name={isSaved(selectedBusiness.id) ? 'heart' : 'heart-outline'}
+                    size={18}
+                    color={isSaved(selectedBusiness.id) ? '#EF4444' : '#64748B'}
+                  />
+                )}
+              </Pressable>
+            ) : null}
+            {selectedBusiness ? (
+              <>
+                <Image source={{ uri: selectedBusiness.img }} style={styles.modalImage} />
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>{selectedBusiness.name}</Text>
+                  <Text style={styles.modalRating}>
+                    ★ {selectedBusiness.rating} ({selectedBusiness.type})
+                  </Text>
+                  <Text style={styles.modalInfo}>97 West Fordham Road, Bronx</Text>
+                  <Text style={styles.modalInfo}>(212) 555-0111</Text>
+                  <Pressable style={styles.ctaButton}>
+                    <Text style={styles.ctaText}>Get Directions</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -79,9 +128,15 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 14,
-    gap: 12,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    columnGap: 12,
+    rowGap: 12,
   },
   card: {
+    width: '100%',
+    maxWidth: 380,
     borderRadius: 14,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -143,5 +198,81 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     color: '#64748B',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    zIndex: 2,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteButton: {
+    position: 'absolute',
+    right: 46,
+    top: 10,
+    zIndex: 2,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeText: {
+    color: '#111827',
+    fontWeight: '700',
+  },
+  modalImage: {
+    width: '100%',
+    height: 170,
+  },
+  modalContent: {
+    padding: 16,
+    gap: 8,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  modalRating: {
+    fontSize: 14,
+    color: '#D97706',
+    fontWeight: '600',
+  },
+  modalInfo: {
+    fontSize: 13,
+    color: '#4B5563',
+  },
+  ctaButton: {
+    marginTop: 8,
+    backgroundColor: '#2563EB',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  ctaText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

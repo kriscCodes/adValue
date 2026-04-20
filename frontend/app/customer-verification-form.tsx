@@ -6,7 +6,7 @@ import {
   Calendar,
   Play,
   MoreHorizontal
-} from 'lucide-react';
+} from 'lucide-react-native';
 
 // Auth Constants
 const AUTH_ACCESS_KEY = 'access_token';
@@ -59,16 +59,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f0f7ff] p-4 md:p-8 font-sans text-slate-700">
-      {/* Navbar Logo */}
-      <header className="max-w-2xl mx-auto mb-10 flex items-center gap-4">
-        <div className="space-y-1.5 cursor-pointer">
-          <div className="w-8 h-0.5 bg-[#3b63cc]"></div>
-          <div className="w-8 h-0.5 bg-[#3b63cc]"></div>
-          <div className="w-8 h-0.5 bg-[#3b63cc]"></div>
-        </div>
-        <h1 className="text-4xl font-bold text-[#3b63cc] tracking-tight">adValue</h1>
-      </header>
-
       <main className="max-w-2xl mx-auto">
         <h2 className="text-3xl font-extrabold text-[#2a59c3] mb-8 leading-tight">Customer Verification Form</h2>
 

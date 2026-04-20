@@ -51,6 +51,15 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="heart.fill" color={color} />,
           }}
         />
+        <Tabs.Screen
+          name="customer-verification-form"
+          options={{
+            title: 'Verification',
+            tabBarIcon: ({ color }) => (
+              <IconSymbol size={28} name="checkmark.shield.fill" color={color} />
+            ),
+          }}
+        />
       </Tabs>
     </View>
   );

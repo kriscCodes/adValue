@@ -1,7 +1,9 @@
 {
   "expo": {
     "name": "frontend",
+    "owner": "krisc2004",
     "slug": "frontend",
+    "originalFullName": "@krisc2004/frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,9 +11,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.krisc2004.frontend",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.krisc2004.frontend",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
