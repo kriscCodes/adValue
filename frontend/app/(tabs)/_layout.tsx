@@ -60,6 +60,15 @@ export default function TabLayout() {
             ),
           }}
         />
+        <Tabs.Screen
+          name="content-status"
+          options={{
+            title: 'Content Status',
+            tabBarIcon: ({ color }) => (
+              <IconSymbol size={28} name="list.bullet.rectangle.fill" color={color} />
+            ),
+          }}
+        />
       </Tabs>
     </View>
   );

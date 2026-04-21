@@ -2,11 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { API_BASE, BUSINESS_ACCESS_KEY } from '@/lib/auth-config';
+import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
 
 type Submission = {
   content_id: number;
-  customer_id: number;
   business_id: number;
   platform: string;
   content_url: string;
@@ -15,29 +14,28 @@ type Submission = {
   submitted_at: string;
 };
 
-export default function BusinessManageScreen() {
+export default function ContentStatusScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const loadSubmissions = useCallback(async () => {
     setError('');
-    const token = await AsyncStorage.getItem(BUSINESS_ACCESS_KEY);
+    const token = await AsyncStorage.getItem(AUTH_ACCESS_KEY);
     if (!token) {
-      router.replace('/business-auth');
+      router.replace('/auth');
       return;
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/business/content-submissions/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await fetch(`${API_BASE}/api/auth/content/submissions/`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+
       if (res.status === 401) {
-        router.replace('/business-auth');
+        await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+        router.replace('/auth');
         return;
       }
       if (!res.ok) {
@@ -46,8 +44,8 @@ export default function BusinessManageScreen() {
       }
       setSubmissions(data.submissions ?? []);
     } catch (e) {
-      console.error('Failed to load business submissions', e);
-      setError('Network error while loading submissions.');
+      console.error('Failed to load submissions', e);
+      setError('Network error while loading content status.');
     } finally {
       setLoading(false);
     }
@@ -71,69 +69,25 @@ export default function BusinessManageScreen() {
     }
   };
 
-  const handleStatusUpdate = async (contentId: number, status: 'pending' | 'rejected' | 'valid') => {
-    const token = await AsyncStorage.getItem(BUSINESS_ACCESS_KEY);
-    if (!token) {
-      router.replace('/business-auth');
-      return;
-    }
-
-    setUpdatingId(contentId);
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/business/content-submissions/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          content_id: contentId,
-          status,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Failed to update submission status.');
-        return;
-      }
-
-      setSubmissions((prev) =>
-        prev.map((item) => (item.content_id === contentId ? { ...item, status } : item)),
-      );
-    } catch (e) {
-      console.error('Failed to update submission status', e);
-      setError('Network error while updating status.');
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
   const statusStyle = (status: Submission['status']) => {
     if (status === 'valid') return styles.statusValid;
     if (status === 'rejected') return styles.statusRejected;
     return styles.statusPending;
   };
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Manage Content</Text>
-        <Text style={styles.subtitle}>Loading submissions...</Text>
-      </View>
-    );
-  }
-
   return (
     <ScrollView contentContainerStyle={styles.page}>
-      <Text style={styles.title}>Manage Content</Text>
-      <Text style={styles.subtitle}>Review submitted videos and approve or reject each request.</Text>
+      <Text style={styles.title}>My Content Status</Text>
+      <Text style={styles.subtitle}>Track approval status for your submitted content.</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {submissions.length === 0 ? (
+      {loading ? (
+        <Text style={styles.helperText}>Loading submissions...</Text>
+      ) : submissions.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>No submissions yet</Text>
-          <Text style={styles.emptySubtitle}>New customer submissions will appear here.</Text>
+          <Text style={styles.emptySubtitle}>Submit a verification request to see it here.</Text>
         </View>
       ) : (
         submissions.map((item) => (
@@ -142,31 +96,15 @@ export default function BusinessManageScreen() {
               <Text style={styles.cardTitle}>Submission #{item.content_id}</Text>
               <Text style={[styles.statusBadge, statusStyle(item.status)]}>{item.status}</Text>
             </View>
-            <Text style={styles.cardMeta}>Submitted by customer: #{item.customer_id}</Text>
-            <Text style={styles.cardMeta}>Platform: {item.platform}</Text>
-            <Text style={styles.cardMeta}>Claimed views: {item.views}</Text>
-            <Text style={styles.cardMeta}>Received: {new Date(item.submitted_at).toLocaleString()}</Text>
-
+            <Text style={styles.meta}>Business ID: {item.business_id}</Text>
+            <Text style={styles.meta}>Platform: {item.platform}</Text>
+            <Text style={styles.meta}>Claimed Views: {item.views}</Text>
+            <Text style={styles.meta}>
+              Submitted: {new Date(item.submitted_at).toLocaleString()}
+            </Text>
             <Pressable onPress={() => openVideo(item.content_url)}>
               <Text style={styles.linkText}>{item.content_url}</Text>
             </Pressable>
-
-            <View style={styles.actions}>
-              <Pressable
-                style={[styles.actionButton, styles.validButton]}
-                disabled={updatingId === item.content_id}
-                onPress={() => handleStatusUpdate(item.content_id, 'valid')}
-              >
-                <Text style={styles.actionText}>Approve</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.actionButton, styles.rejectedButton]}
-                disabled={updatingId === item.content_id}
-                onPress={() => handleStatusUpdate(item.content_id, 'rejected')}
-              >
-                <Text style={styles.actionText}>Reject</Text>
-              </Pressable>
-            </View>
           </View>
         ))
       )}
@@ -175,13 +113,6 @@ export default function BusinessManageScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#EFF9FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
   page: {
     backgroundColor: '#EFF9FF',
     padding: 16,
@@ -197,6 +128,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     marginBottom: 12,
+  },
+  helperText: {
+    fontSize: 14,
+    color: '#475569',
   },
   errorText: {
     color: '#dc2626',
@@ -227,12 +162,12 @@ const styles = StyleSheet.create({
     borderColor: '#dbeafe',
     padding: 14,
     marginBottom: 10,
-    gap: 2,
+    gap: 3,
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 4,
   },
   cardTitle: {
@@ -260,7 +195,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#dcfce7',
     color: '#166534',
   },
-  cardMeta: {
+  meta: {
     fontSize: 12,
     color: '#334155',
   },
@@ -269,26 +204,5 @@ const styles = StyleSheet.create({
     color: '#1d4ed8',
     marginTop: 4,
     textDecorationLine: 'underline',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-  },
-  actionButton: {
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  validButton: {
-    backgroundColor: '#16a34a',
-  },
-  rejectedButton: {
-    backgroundColor: '#dc2626',
-  },
-  actionText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
   },
 });

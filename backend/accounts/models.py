@@ -58,6 +58,8 @@ class Business(models.Model):
     business_description = models.CharField(max_length=500, blank=True, default="")
     business_address = models.CharField(max_length=255, blank=True, default="")
     google_place_id = models.CharField(max_length=255, blank=True, default="")
+    google_place_photos = models.JSONField(default=list, blank=True)
+    google_place_reviews = models.JSONField(default=list, blank=True)
     auth_provider = models.CharField(max_length=20, default="local")
 
     def set_password(self, raw_password):
@@ -94,3 +96,36 @@ class SavedBusiness(models.Model):
                 name="unique_saved_business_per_customer",
             )
         ]
+
+
+class Content(models.Model):
+    class PlatformChoices(models.TextChoices):
+        TIKTOK = "tiktok", "TikTok"
+        INSTAGRAM = "instagram", "Instagram"
+        YOUTUBE = "youtube", "YouTube"
+
+    class StatusChoices(models.TextChoices):
+        PENDING = "pending", "Pending"
+        REJECTED = "rejected", "Rejected"
+        VALID = "valid", "Valid"
+
+    content_id = models.AutoField(primary_key=True)
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="content_submissions",
+    )
+    # Kept as integer for demo speed; can migrate to FK(Business) later.
+    business_id = models.IntegerField()
+    platform = models.CharField(max_length=20, choices=PlatformChoices.choices)
+    content_url = models.URLField(max_length=500)
+    views = models.PositiveIntegerField()
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.PENDING,
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "Content"

@@ -11,7 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from .models import SavedBusiness
+from .models import Business, Content, SavedBusiness
 
 # This fetched customer model
 User = get_user_model() 
@@ -283,3 +283,106 @@ class SavedBusinessesView(APIView):
             return Response({"message": "Saved business not found."}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"message": "Saved business removed."}, status=status.HTTP_200_OK)
+
+
+class ContentSubmissionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        submissions = Content.objects.filter(customer=request.user).order_by("-submitted_at")
+        return Response(
+            {
+                "submissions": [
+                    {
+                        "content_id": item.content_id,
+                        "customer_id": item.customer_id,
+                        "business_id": item.business_id,
+                        "platform": item.platform,
+                        "content_url": item.content_url,
+                        "views": item.views,
+                        "status": item.status,
+                        "submitted_at": item.submitted_at,
+                    }
+                    for item in submissions
+                ]
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        business_id = request.data.get("business_id")
+        business_title = (request.data.get("business_title") or "").strip()
+        platform = request.data.get("platform")
+        content_url = request.data.get("content_url")
+        views = request.data.get("views")
+
+        if (business_id is None and not business_title) or not platform or not content_url or views is None:
+            return Response(
+                {"error": "business_id or business_title, platform, content_url, and views are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if business_id is None and business_title:
+            exact_match = Business.objects.filter(business_name__iexact=business_title).first()
+            if exact_match:
+                business_id = exact_match.business_id
+            else:
+                partial_matches = Business.objects.filter(business_name__icontains=business_title).order_by("business_id")
+                match_count = partial_matches.count()
+                if match_count == 1:
+                    business_id = partial_matches.first().business_id
+                elif match_count > 1:
+                    return Response(
+                        {"error": "Multiple businesses matched this title. Please submit with business_id."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                else:
+                    return Response(
+                        {"error": "No business found for the provided business_title."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+        try:
+            business_id = int(business_id)
+            views = int(views)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "business_id and views must be integers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if business_id < 0 or views < 0:
+            return Response(
+                {"error": "business_id and views must be non-negative integers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        valid_platforms = {choice[0] for choice in Content.PlatformChoices.choices}
+        if platform not in valid_platforms:
+            return Response(
+                {"error": "platform must be one of: tiktok, instagram, youtube."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        submission = Content.objects.create(
+            customer=request.user,
+            business_id=business_id,
+            platform=platform,
+            content_url=content_url,
+            views=views,
+            status=Content.StatusChoices.PENDING,
+        )
+
+        return Response(
+            {
+                "content_id": submission.content_id,
+                "customer_id": submission.customer_id,
+                "business_id": submission.business_id,
+                "platform": submission.platform,
+                "content_url": submission.content_url,
+                "views": submission.views,
+                "status": submission.status,
+                "submitted_at": submission.submitted_at,
+            },
+            status=status.HTTP_201_CREATED,
+        )
