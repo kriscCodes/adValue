@@ -89,6 +89,10 @@ export default function ProfileTab() {
   }
 
   const showInlineNav = Platform.OS !== 'web';
+  const handleSignOut = async () => {
+    await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+    router.replace('/auth' as Href);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -207,7 +211,7 @@ export default function ProfileTab() {
           <Text style={styles.reportButtonText}>Report a Problem</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.signOutButton}>
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <Feather name="log-out" size={18} color="#475569" style={{ marginRight: 8 }} />
           <Text style={styles.signOutText}>Sign Out of adValue</Text>
         </TouchableOpacity>
