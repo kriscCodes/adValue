@@ -64,7 +64,7 @@ export function useBusinessAuth() {
         [BUSINESS_ACCESS_KEY, data.access],
         [BUSINESS_REFRESH_KEY, data.refresh],
       ]);
-      router.replace({ pathname: '/home' });
+      router.replace({ pathname: '/business' });
     } catch {
       setError('Network error');
     } finally {
