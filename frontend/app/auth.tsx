@@ -2,6 +2,7 @@ import { View, ScrollView, Text, useWindowDimensions } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/AuthForm';
 import { AuthToggleButton } from '@/components/AuthToggleButton';
+import { BackToRoleSelectBar } from '@/components/BackToRoleSelectBar';
 import { BrandingSection } from '@/components/BrandingSection';
 
 export default function AuthPage() {
@@ -63,7 +64,8 @@ export default function AuthPage() {
   // Mobile Layout (full width)
   return (
     <ScrollView className="flex-1 bg-blue-50">
-      <View className="flex-1 justify-center items-center px-6 pt-16 pb-6">
+      <View className="flex-1 justify-center items-center px-6 pb-6">
+        <BackToRoleSelectBar />
         <Text className="text-5xl font-bold text-blue-600 mb-8">adValue</Text>
         <View className="w-full">
           <AuthToggleButton isSignup={mode === 'signup'} onToggle={toggleMode} />

@@ -1,10 +1,21 @@
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { usePathname, router } from 'expo-router';
 
-const links: { href: '/home' | '/explore' | '/saved' | '/profile'; label: string }[] = [
+const links: {
+  href:
+    | '/home'
+    | '/explore'
+    | '/saved'
+    | '/profile'
+    | '/customer-verification-form'
+    | '/content-status';
+  label: string;
+}[] = [
   { href: '/home', label: 'Home' },
   { href: '/explore', label: 'Explore' },
   { href: '/saved', label: 'Saved' },
+  { href: '/customer-verification-form', label: 'Verification' },
+  { href: '/content-status', label: 'Content Status' },
   { href: '/profile', label: 'Profile' },
 ];
 

@@ -31,20 +31,20 @@ export default function BusinessLayout() {
           }}
         />
         <Tabs.Screen
-          name="info"
-          options={{
-            title: 'Store info',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="document-text-outline" size={size ?? 26} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
           name="profile"
           options={{
             title: 'Profile',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="person-circle-outline" size={size ?? 26} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="manage"
+          options={{
+            title: 'Manage',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="albums-outline" size={size ?? 26} color={color} />
             ),
           }}
         />

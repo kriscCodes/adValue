@@ -1,6 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useFonts } from 'expo-font';
@@ -13,6 +14,8 @@ import {
   AUTH_ACCESS_KEY,
   BUSINESS_ACCESS_KEY,
 } from '@/lib/auth-config';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const PUBLIC_PATHS = new Set([
   '/',

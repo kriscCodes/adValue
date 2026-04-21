@@ -3,8 +3,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db.models import Q
 
-from .models import Business
+from .models import Business, Content
 
 
 def get_tokens_for_business(business):
@@ -29,16 +30,40 @@ def get_business_from_token(request):
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return None
-    try:
-        token = AT(auth.split(" ")[1])
-        if token.get("type") != "business":
+
+    raw_token = auth.split(" ")[1]
+
+    def _resolve_business_id(token_obj):
+        business_id = token_obj.get("business_id")
+        if not business_id:
             return None
-        return Business.objects.get(business_id=token["business_id"])
+        token_type = token_obj.get("type")
+        if token_type is not None and token_type != "business":
+            return None
+        return business_id
+
+    try:
+        access_token = AT(raw_token)
+        business_id = _resolve_business_id(access_token)
+        if business_id:
+            return Business.objects.get(business_id=business_id)
     except Exception:
-        return None
+        pass
+
+    # Backward/fault tolerance: allow refresh tokens from business auth flow as fallback.
+    try:
+        refresh_token = RefreshToken(raw_token)
+        business_id = _resolve_business_id(refresh_token)
+        if business_id:
+            return Business.objects.get(business_id=business_id)
+    except Exception:
+        pass
+
+    return None
 
 
 class BusinessRegisterView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -74,6 +99,7 @@ class BusinessRegisterView(APIView):
 
 
 class BusinessLoginView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -103,7 +129,40 @@ class BusinessLoginView(APIView):
         return Response(get_tokens_for_business(business), status=status.HTTP_200_OK)
 
 
+class BusinessSearchView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        query = (request.query_params.get("q") or "").strip()
+        if not query:
+            return Response({"businesses": []}, status=status.HTTP_200_OK)
+
+        businesses = (
+            Business.objects.filter(
+                Q(business_name__icontains=query)
+                | Q(business_address__icontains=query)
+            )
+            .order_by("business_name")[:10]
+        )
+
+        return Response(
+            {
+                "businesses": [
+                    {
+                        "business_id": item.business_id,
+                        "business_name": item.business_name,
+                        "business_address": item.business_address,
+                    }
+                    for item in businesses
+                ]
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class BusinessProfileView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -144,3 +203,93 @@ class BusinessProfileView(APIView):
         business.save()
 
         return Response({"message": "Profile updated."}, status=status.HTTP_200_OK)
+
+
+class BusinessContentReviewView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        business = get_business_from_token(request)
+        if not business:
+            return Response(
+                {"error": "Unauthorized."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        submissions = Content.objects.filter(business_id=business.business_id).order_by("-submitted_at")
+        return Response(
+            {
+                "submissions": [
+                    {
+                        "content_id": item.content_id,
+                        "customer_id": item.customer_id,
+                        "business_id": item.business_id,
+                        "platform": item.platform,
+                        "content_url": item.content_url,
+                        "views": item.views,
+                        "status": item.status,
+                        "submitted_at": item.submitted_at,
+                    }
+                    for item in submissions
+                ]
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def patch(self, request):
+        business = get_business_from_token(request)
+        if not business:
+            return Response(
+                {"error": "Unauthorized."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        content_id = request.data.get("content_id")
+        new_status = request.data.get("status")
+
+        if content_id is None or not new_status:
+            return Response(
+                {"error": "content_id and status are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            content_id = int(content_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "content_id must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        valid_statuses = {
+            Content.StatusChoices.PENDING,
+            Content.StatusChoices.REJECTED,
+            Content.StatusChoices.VALID,
+        }
+        if new_status not in valid_statuses:
+            return Response(
+                {"error": "status must be one of: pending, rejected, valid."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        submission = Content.objects.filter(
+            content_id=content_id,
+            business_id=business.business_id,
+        ).first()
+        if not submission:
+            return Response(
+                {"error": "Submission not found for this business."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        submission.status = new_status
+        submission.save(update_fields=["status"])
+
+        return Response(
+            {
+                "content_id": submission.content_id,
+                "status": submission.status,
+            },
+            status=status.HTTP_200_OK,
+        )
