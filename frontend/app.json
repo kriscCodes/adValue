@@ -42,6 +42,24 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow adValue to notify you when you're near a saved business.",
+          "locationWhenInUsePermission": "Allow adValue to use your location for nearby saved-place alerts.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#2563eb",
+          "sounds": [],
+          "enableBackgroundRemoteNotifications": false
+        }
       ]
     ],
     "experiments": {

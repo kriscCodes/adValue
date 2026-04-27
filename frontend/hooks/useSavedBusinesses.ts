@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 import { BUSINESSES, type Business } from '@/app/(tabs)/explore-shared';
 import { API_BASE, AUTH_ACCESS_KEY } from '@/lib/auth-config';
+import { syncSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 type SavedBusinessResponse = {
   business_external_id: number;
@@ -83,6 +85,8 @@ export function useSavedBusinesses() {
           });
           if (!res.ok) {
             setSavedIds((prev) => (prev.includes(businessId) ? prev : [...prev, businessId]));
+          } else if (Platform.OS !== 'web') {
+            void syncSavedBusinessGeofences();
           }
         } else {
           const res = await fetch(`${API_BASE}/api/auth/saved-businesses/`, {
@@ -103,6 +107,8 @@ export function useSavedBusinesses() {
           });
           if (!res.ok) {
             setSavedIds((prev) => prev.filter((id) => id !== businessId));
+          } else if (Platform.OS !== 'web') {
+            void syncSavedBusinessGeofences();
           }
         }
       } catch {

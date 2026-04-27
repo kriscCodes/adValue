@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   Modal,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -11,34 +12,62 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import MapView, { Marker, type Region } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
-import { BUSINESSES, type Business } from './explore-shared';
+import { HUNTER_COLLEGE_CENTER, type Business } from './explore-shared';
+import { useExplorePlaces } from '@/hooks/useExplorePlaces';
 import { useSavedBusinesses } from '@/hooks/useSavedBusinesses';
 
-const INITIAL_REGION: Region = {
-  latitude: 40.855,
-  longitude: -73.89,
-  latitudeDelta: 0.05,
-  longitudeDelta: 0.05,
-};
-
 export default function ExploreScreen() {
+  const mapRef = useRef<MapView>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [search, setSearch] = useState('');
+  const explorePlaces = useExplorePlaces();
   const { loading: savedLoading, isSaved, toggleSaved } = useSavedBusinesses();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function enableUserLocation() {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (cancelled || status !== 'granted') return;
+      try {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (cancelled) return;
+        mapRef.current?.animateToRegion(
+          {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            latitudeDelta: 0.03,
+            longitudeDelta: 0.03,
+          },
+          500
+        );
+      } catch {
+        // Keep Hunter-centered region
+      }
+    }
+
+    enableUserLocation();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredBusinesses = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) {
-      return BUSINESSES;
+      return explorePlaces;
     }
-    return BUSINESSES.filter(
+    return explorePlaces.filter(
       (business) =>
         business.name.toLowerCase().includes(term) || business.type.toLowerCase().includes(term),
     );
-  }, [search]);
+  }, [search, explorePlaces]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,7 +85,17 @@ export default function ExploreScreen() {
       </View>
 
       <View style={styles.mapWrap}>
-        <MapView style={styles.map} initialRegion={INITIAL_REGION}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          showsUserLocation
+          showsMyLocationButton={Platform.OS === 'android'}
+          initialRegion={{
+            latitude: HUNTER_COLLEGE_CENTER.latitude,
+            longitude: HUNTER_COLLEGE_CENTER.longitude,
+            latitudeDelta: HUNTER_COLLEGE_CENTER.latitudeDelta,
+            longitudeDelta: HUNTER_COLLEGE_CENTER.longitudeDelta,
+          }}>
           {filteredBusinesses.map((business) => (
             <Marker
               key={business.id}
@@ -123,7 +162,9 @@ export default function ExploreScreen() {
                   <Text style={styles.modalRating}>
                     ★ {selectedBusiness.rating} ({selectedBusiness.type})
                   </Text>
-                  <Text style={styles.modalInfo}>97 West Fordham Road, Bronx</Text>
+                  <Text style={styles.modalInfo}>
+                    {selectedBusiness.address ?? '97 West Fordham Road, Bronx'}
+                  </Text>
                   <Text style={styles.modalInfo}>(212) 555-0111</Text>
                   <Pressable style={styles.ctaButton}>
                     <Text style={styles.ctaText}>Get Directions</Text>
