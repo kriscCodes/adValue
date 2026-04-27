@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 from .models import Business, Content
 
@@ -192,17 +194,80 @@ class BusinessProfileView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        updatable = [
-            "business_name", "business_owner_first_name", "business_owner_last_name",
-            "business_description", "business_address", "google_place_id",
-        ]
-        for field in updatable:
-            value = request.data.get(field)
-            if value is not None:
-                setattr(business, field, value)
-        business.save()
+        changed_fields = []
 
-        return Response({"message": "Profile updated."}, status=status.HTTP_200_OK)
+        email = request.data.get("email")
+        if email is not None:
+            email = str(email).strip().lower()
+            if not email:
+                return Response(
+                    {"error": "email cannot be empty."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                validate_email(email)
+            except ValidationError:
+                return Response(
+                    {"error": "Enter a valid email address."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if (
+                Business.objects.filter(business_email=email)
+                .exclude(business_id=business.business_id)
+                .exists()
+            ):
+                return Response(
+                    {"error": "A business with this email already exists."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            business.business_email = email
+            changed_fields.append("business_email")
+
+        password = request.data.get("password")
+        if password is not None:
+            password = str(password)
+            if len(password) < 8:
+                return Response(
+                    {"error": "password must be at least 8 characters."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            business.set_password(password)
+            changed_fields.append("business_password")
+
+        field_map = {
+            "business_name": "business_name",
+            "owner_first_name": "business_owner_first_name",
+            "owner_last_name": "business_owner_last_name",
+            "description": "business_description",
+            "address": "business_address",
+            "google_place_id": "google_place_id",
+        }
+        for request_field, model_field in field_map.items():
+            value = request.data.get(request_field)
+            if value is not None:
+                setattr(business, model_field, value)
+                changed_fields.append(model_field)
+
+        if changed_fields:
+            business.save(update_fields=list(set(changed_fields)))
+
+        return Response(
+            {
+                "message": "Profile updated.",
+                "profile": {
+                    "id": business.business_id,
+                    "email": business.business_email,
+                    "name": business.business_name,
+                    "owner_first_name": business.business_owner_first_name,
+                    "owner_last_name": business.business_owner_last_name,
+                    "description": business.business_description,
+                    "address": business.business_address,
+                    "google_place_id": business.google_place_id,
+                    "auth_provider": business.auth_provider,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class BusinessContentReviewView(APIView):

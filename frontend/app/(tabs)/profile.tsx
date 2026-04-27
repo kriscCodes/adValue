@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Animated,
+  Easing,
   StyleSheet,
   Text,
   View,
   TextInput,
   TouchableOpacity,
-  Switch,
+  Pressable,
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
@@ -22,18 +24,55 @@ type Profile = {
   first_name: string;
   last_name: string;
   location_enabled: boolean;
+  notifications_enabled: boolean;
 } | null;
+
+type AnimatedToggleProps = {
+  value: boolean;
+  onToggle: () => void;
+};
+
+function AnimatedToggle({ value, onToggle }: AnimatedToggleProps) {
+  const [progress] = useState(() => new Animated.Value(value ? 1 : 0));
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: value ? 1 : 0,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [value, progress]);
+
+  const translateX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 20],
+  });
+
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      onPress={onToggle}
+      style={styles.toggleTrack}
+    >
+      <Animated.View style={[styles.toggleThumb, { transform: [{ translateX }] }]} />
+    </Pressable>
+  );
+}
 
 export default function ProfileTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('');
 
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [profile, setProfile] = useState<Profile>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +97,7 @@ export default function ProfileTab() {
           setProfile(data);
           setEmail(data.email ?? '');
           setLocationEnabled(Boolean(data.location_enabled));
+          setNotificationsEnabled(Boolean(data.notifications_enabled));
         }
       } catch {
         if (!cancelled) setError('Network error');
@@ -92,6 +132,52 @@ export default function ProfileTab() {
   const handleSignOut = async () => {
     await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
     router.replace('/auth' as Href);
+  };
+  const handleSaveChanges = async () => {
+    setError(null);
+    setSuccess(null);
+    setSaving(true);
+
+    const token = await AsyncStorage.getItem(AUTH_ACCESS_KEY);
+    try {
+      const payload: Record<string, unknown> = {
+        email,
+        location_enabled: locationEnabled,
+        notifications_enabled: notificationsEnabled,
+      };
+      if (password.trim()) {
+        payload.password = password.trim();
+      }
+
+      const res = await fetch(`${API_BASE}/api/auth/profile/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token ?? ''}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.status === 401) {
+        await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+        router.replace('/auth' as Href);
+        return;
+      }
+      if (!res.ok) {
+        setError(data.error || 'Failed to save changes.');
+        return;
+      }
+
+      if (data.profile) {
+        setProfile(data.profile);
+      }
+      setPassword('');
+      setSuccess('Profile updated successfully.');
+    } catch {
+      setError('Network error while saving profile.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -161,12 +247,11 @@ export default function ProfileTab() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={() => alert(`Saved! Email is now: ${email}`)}
-          >
-            <Text style={styles.saveButtonText}>Save Changes</Text>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveChanges} disabled={saving}>
+            <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
           </TouchableOpacity>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {success ? <Text style={styles.successText}>{success}</Text> : null}
         </View>
 
         <View style={styles.card}>
@@ -180,13 +265,12 @@ export default function ProfileTab() {
               <Feather name="map-pin" size={20} color="#3b82f6" />
               <View style={styles.settingTextContent}>
                 <Text style={styles.settingLabel}>Location Services</Text>
-                <Text style={styles.settingSubtext}>Improve ad relevance based on your area</Text>
+                <Text style={styles.settingSubtext}>Improve content relevance based on your area</Text>
               </View>
             </View>
-            <Switch
+            <AnimatedToggle
               value={locationEnabled}
-              onValueChange={setLocationEnabled}
-              trackColor={{ false: '#e2e8f0', true: '#3b82f6' }}
+              onToggle={() => setLocationEnabled((prev) => !prev)}
             />
           </View>
 
@@ -195,13 +279,12 @@ export default function ProfileTab() {
               <Feather name="bell" size={20} color="#3b82f6" />
               <View style={styles.settingTextContent}>
                 <Text style={styles.settingLabel}>Push Notifications</Text>
-                <Text style={styles.settingSubtext}>Daily summaries and alerts</Text>
+                <Text style={styles.settingSubtext}>Get updates about status changes and account activity</Text>
               </View>
             </View>
-            <Switch
+            <AnimatedToggle
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{ false: '#e2e8f0', true: '#3b82f6' }}
+              onToggle={() => setNotificationsEnabled((prev) => !prev)}
             />
           </View>
         </View>
@@ -346,6 +429,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+  },
+  errorText: {
+    marginTop: 10,
+    color: '#dc2626',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  successText: {
+    marginTop: 10,
+    color: '#16a34a',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  toggleTrack: {
+    width: 46,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#e5e7eb',
+    paddingHorizontal: 2,
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#3b82f6',
   },
   settingRow: {
     flexDirection: 'row',

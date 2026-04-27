@@ -38,6 +38,7 @@ class Customer(AbstractBaseUser):
     google_subject_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
     email_verified = models.BooleanField(default=False)
     location_enabled = models.BooleanField(default=False)
+    notifications_enabled = models.BooleanField(default=False)
 
     objects = CustomerManager()
 
