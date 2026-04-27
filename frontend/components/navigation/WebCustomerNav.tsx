@@ -6,6 +6,7 @@ const links: {
     | '/home'
     | '/explore'
     | '/saved'
+    | '/rewards'
     | '/profile'
     | '/customer-verification-form'
     | '/content-status';
@@ -14,6 +15,7 @@ const links: {
   { href: '/home', label: 'Home' },
   { href: '/explore', label: 'Explore' },
   { href: '/saved', label: 'Saved' },
+  { href: '/rewards', label: 'Rewards' },
   { href: '/customer-verification-form', label: 'Verification' },
   { href: '/content-status', label: 'Content Status' },
   { href: '/profile', label: 'Profile' },

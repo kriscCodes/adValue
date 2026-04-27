@@ -1,151 +1,419 @@
-import React, { useState, useEffect } from 'react';
-import { X, QrCode, Ban } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Ban, QrCode, X } from 'lucide-react-native';
+import {
+  Image,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
+import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
 
-const REWARDS_DATA = [
-  { id: 1, shop: "The Daily Grind", offer: "FREE DRINK", expires: "Oct 24, 2027", status: "READY TO USE", image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400" },
-  { id: 2, shop: "Pasta House", offer: "15% OFF", expires: "Nov 02, 2027", status: "READY TO USE", image: "https://images.unsplash.com/photo-1473093226795-af9932fe5856?w=400" },
-  { id: 3, shop: "Sweet Treats", offer: "FREE DONUT", expires: "Oct 30, 2027", status: "READY TO USE", image: "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400" },
-  { id: 4, shop: "Crusty Batch", offer: "FREE LOAF", expires: "Nov 15, 2027", status: "READY TO USE", image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400" },
-  { id: 5, shop: "Urban Greens", offer: "20% OFF BOWL", expires: "Dec 01, 2024", status: "READY TO USE", image: "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcSomkx2iDPGVKA6YlRiU3D7UCy0KvYtbkG_F0-vNGP25PJJF0Ic_LpoUncqefBr" },
-  { id: 6, shop: "Velvet Bean", offer: "PASTRY + $5 COFFEE", expires: "Oct 28, 2027", status: "READY TO USE", image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400" },
-  { id: 7, shop: "Bryan's Bakery", offer: "Free Latte (Up to $8)", expires: "Oct 15, 2027", status: "USED", image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400" },
-];
-
-const App = () => {
-  const [selectedReward, setSelectedReward] = useState(null);
-  const [filter, setFilter] = useState('All');
-
-  // Modal Component (Web Popup Design)
-  const QRModal = ({ reward, onClose }) => (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-[2rem] w-full max-w-sm p-8 flex flex-col items-center text-center shadow-2xl">
-        <h2 className="text-3xl font-bold text-[#1a2b4b] mb-1">{reward.shop}</h2>
-        <p className="text-blue-600 font-semibold text-lg mb-4">$10 In store Credit</p>
-        
-        <div className="flex gap-2 mb-6">
-          <span className="bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Reward</span>
-          <span className="bg-emerald-50 text-emerald-500 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Valid</span>
-        </div>
-
-        <div className="relative p-4 border-2 border-blue-50 rounded-3xl mb-8">
-           {/* Mock QR Code UI */}
-          <div className="w-48 h-48 bg-white flex items-center justify-center border-[12px] border-white shadow-sm">
-            <QrCode size={160} strokeWidth={1.5} />
-          </div>
-          <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-blue-100 rounded-tl-xl"></div>
-          <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-blue-100 rounded-tr-xl"></div>
-          <div className="absolute -bottom-2 -left-2 w-8 h-8 border-b-4 border-l-4 border-blue-100 rounded-bl-xl"></div>
-          <div className="absolute -bottom-2 -right-2 w-8 h-8 border-b-4 border-r-4 border-blue-100 rounded-br-xl"></div>
-        </div>
-
-        <p className="text-slate-400 text-sm mb-8">Scan at checkout to redeem your reward</p>
-        
-        <button 
-          onClick={onClose}
-          className="w-full bg-[#2b6eff] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
-        >
-          <X size={20} /> Close
-        </button>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-white">
-      {/* Navigation Header (Laptop View) */}
-      <header className="hidden md:flex items-center justify-between px-8 py-4 border-b border-gray-100">
-        <div className="flex items-center gap-8">
-          <span className="text-[#2b6eff] font-bold text-xl">adValue</span>
-          <nav className="flex gap-6 text-gray-500 text-sm font-medium">
-            <a href="#" className="hover:text-black">Explore</a>
-            <a href="#" className="text-[#2b6eff]">Rewards</a>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4 text-gray-400">
-          <button className="relative">
-            <div className="w-2 h-2 bg-red-500 rounded-full absolute top-0 right-0 border-2 border-white"></div>
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-          </button>
-          <div className="w-8 h-8 bg-emerald-700 rounded-full"></div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto p-6 md:p-10">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-[#1a2b4b]">Active Reward Tickets</h1>
-          <p className="text-gray-500 mt-2">Manage and redeem your exclusive local business offers.</p>
-        </div>
-
-        {/* Mobile Filter Tabs */}
-        <div className="flex md:hidden gap-2 mb-8">
-          {['All Tickets', 'Ready to use', 'Used'].map((t) => (
-            <button 
-              key={t}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${t === 'All Tickets' ? 'bg-[#2b6eff] text-white' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {/* Responsive Grid/List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {REWARDS_DATA.map((reward) => (
-            <div key={reward.id} className="group">
-              {/* DESKTOP CARD DESIGN */}
-              <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                <img src={reward.image} alt={reward.shop} className="w-full h-48 object-cover" />
-                <div className="p-6">
-                  <h3 className="text-lg font-bold text-gray-800">{reward.shop}</h3>
-                  <p className="text-blue-600 font-black text-xl mb-3 tracking-tight">{reward.offer}</p>
-                  <p className="text-gray-400 text-xs flex items-center gap-1 mb-6">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    Expires: {reward.expires}
-                  </p>
-                  <button 
-                    onClick={() => setSelectedReward(reward)}
-                    className="w-full bg-[#2b6eff] text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
-                  >
-                    <QrCode size={16} /> View QR Code
-                  </button>
-                </div>
-              </div>
-
-              {/* MOBILE CARD DESIGN */}
-              <div className="md:hidden bg-white rounded-3xl border border-gray-100 shadow-sm p-4 relative">
-                <div className="flex gap-4">
-                  <img src={reward.image} alt={reward.shop} className="w-16 h-16 rounded-2xl object-cover" />
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-slate-800">{reward.shop}</h3>
-                        <p className={`font-semibold ${reward.status === 'USED' ? 'text-slate-400' : 'text-blue-600'}`}>{reward.offer}</p>
-                        <p className="text-[10px] text-slate-400 uppercase font-bold mt-1 tracking-wider">Issued {reward.expires}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-sm ${reward.status === 'READY TO USE' ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-100 text-slate-400'}`}>
-                          {reward.status}
-                        </span>
-                        {reward.status === 'READY TO USE' ? <QrCode className="text-slate-300" size={18} /> : <Ban className="text-slate-200" size={18} />}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {reward.status !== 'USED' && (
-                  <div className="mt-4 pt-3 border-t border-dashed border-gray-100">
-                    <button onClick={() => setSelectedReward(reward)} className="text-blue-500 text-sm font-semibold w-full text-left">Tap to open</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </main>
-
-      {/* Modal Trigger */}
-      {selectedReward && <QRModal reward={selectedReward} onClose={() => setSelectedReward(null)} />}
-    </div>
-  );
+type RewardStatus = 'READY TO USE' | 'USED';
+type Reward = {
+  id: number;
+  shop: string;
+  offer: string;
+  expires: string;
+  status: RewardStatus;
+  image: string;
+  platform: string;
+  contentUrl: string;
+  claimedViews: number;
 };
 
-export default App;
+const PLATFORM_IMAGE_BY_KEY: Record<string, string> = {
+  tiktok: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400',
+  instagram: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?w=400',
+  youtube: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400',
+};
+
+export default function RewardsPageScreen() {
+  const { width } = useWindowDimensions();
+  const isWebGrid = Platform.OS === 'web' && width >= 900;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+  const [filter, setFilter] = useState<'all' | 'ready' | 'used'>('all');
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadRewards = async () => {
+      const token = await AsyncStorage.getItem(AUTH_ACCESS_KEY);
+      if (!token) {
+        router.replace('/auth');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/rewards/`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+
+        if (res.status === 401) {
+          await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+          if (!cancelled) router.replace('/auth');
+          return;
+        }
+
+        if (!res.ok) {
+          if (!cancelled) setError(data.error || 'Failed to load rewards.');
+          return;
+        }
+
+        const mapped: Reward[] = (data.rewards ?? []).map((item: any) => ({
+          id: item.reward_id,
+          shop: item.shop,
+          offer: item.offer,
+          expires: item.expires,
+          status: item.status === 'USED' ? 'USED' : 'READY TO USE',
+          image: PLATFORM_IMAGE_BY_KEY[item.platform] ?? PLATFORM_IMAGE_BY_KEY.tiktok,
+          platform: item.platform ?? 'tiktok',
+          contentUrl: item.content_url ?? '',
+          claimedViews: item.claimed_views ?? 0,
+        }));
+        if (!cancelled) setRewards(mapped);
+      } catch (e) {
+        if (!cancelled) {
+          console.error('Failed to load rewards', e);
+          setError('Network error while loading rewards.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadRewards();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filteredRewards = useMemo(() => {
+    if (filter === 'ready') return rewards.filter((r) => r.status === 'READY TO USE');
+    if (filter === 'used') return rewards.filter((r) => r.status === 'USED');
+    return rewards;
+  }, [filter, rewards]);
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.heading}>Active Reward Tickets</Text>
+        <Text style={styles.subheading}>Manage and redeem your exclusive local business offers.</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <View style={styles.filters}>
+          <Pressable
+            style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+            onPress={() => setFilter('all')}
+          >
+            <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>All Tickets</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.filterButton, filter === 'ready' && styles.filterButtonActive]}
+            onPress={() => setFilter('ready')}
+          >
+            <Text style={[styles.filterText, filter === 'ready' && styles.filterTextActive]}>Ready to use</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.filterButton, filter === 'used' && styles.filterButtonActive]}
+            onPress={() => setFilter('used')}
+          >
+            <Text style={[styles.filterText, filter === 'used' && styles.filterTextActive]}>Used</Text>
+          </Pressable>
+        </View>
+
+        {loading ? (
+          <Text style={styles.helperText}>Loading rewards...</Text>
+        ) : (
+          <View style={[styles.cardsContainer, isWebGrid && styles.cardsContainerWeb]}>
+          {filteredRewards.map((reward) => (
+            <View key={reward.id} style={[styles.card, isWebGrid && styles.cardWeb]}>
+              <Image source={{ uri: reward.image }} style={styles.cardImage} />
+              <View style={styles.cardBody}>
+                <View style={styles.cardTopRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.shopName}>{reward.shop}</Text>
+                    <Text style={[styles.offerText, reward.status === 'USED' && styles.offerUsed]}>{reward.offer}</Text>
+                    <Text style={styles.expiresText}>Expires: {reward.expires}</Text>
+                    <Text style={styles.metaText}>Platform: {reward.platform}</Text>
+                    <Text style={styles.metaText}>Claimed views: {reward.claimedViews}</Text>
+                  </View>
+                  <View style={styles.statusPill}>
+                    <Text style={styles.statusText}>{reward.status}</Text>
+                  </View>
+                </View>
+
+                <Pressable
+                  disabled={reward.status === 'USED'}
+                  style={[styles.qrButton, reward.status === 'USED' && styles.qrButtonDisabled]}
+                  onPress={() => setSelectedReward(reward)}
+                >
+                  {reward.status === 'USED' ? <Ban size={16} color="#94a3b8" /> : <QrCode size={16} color="#ffffff" />}
+                  <Text style={[styles.qrButtonText, reward.status === 'USED' && styles.qrButtonTextDisabled]}>
+                    {reward.status === 'USED' ? 'Already Used' : 'View QR Code'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ))}
+          {filteredRewards.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No rewards yet</Text>
+              <Text style={styles.emptySubtitle}>Rewards are generated after your content submission is approved.</Text>
+            </View>
+          ) : null}
+          </View>
+        )}
+      </ScrollView>
+
+      <Modal visible={!!selectedReward} transparent animationType="fade" onRequestClose={() => setSelectedReward(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalShop}>{selectedReward?.shop}</Text>
+            <Text style={styles.modalOffer}>$10 In-store Credit</Text>
+
+            <View style={styles.qrBox}>
+              <QrCode size={150} color="#1e293b" />
+            </View>
+
+            <Text style={styles.modalHint}>Scan at checkout to redeem your reward</Text>
+
+            <Pressable style={styles.closeButton} onPress={() => setSelectedReward(null)}>
+              <X size={18} color="#ffffff" />
+              <Text style={styles.closeButtonText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 24,
+  },
+  heading: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1a2b4b',
+  },
+  subheading: {
+    marginTop: 6,
+    marginBottom: 14,
+    color: '#64748b',
+    fontSize: 14,
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  helperText: {
+    fontSize: 14,
+    color: '#475569',
+  },
+  filters: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  filterButton: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  filterButtonActive: {
+    backgroundColor: '#2b6eff',
+    borderColor: '#2b6eff',
+  },
+  filterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  filterTextActive: {
+    color: '#ffffff',
+  },
+  cardsContainer: {
+    gap: 12,
+  },
+  cardsContainerWeb: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 12,
+    backgroundColor: '#ffffff',
+  },
+  cardWeb: {
+    width: '31.8%',
+    minWidth: 260,
+  },
+  cardImage: {
+    width: '100%',
+    height: 160,
+  },
+  cardBody: {
+    padding: 12,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  shopName: {
+    color: '#1f2937',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  offerText: {
+    color: '#2563eb',
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  offerUsed: {
+    color: '#94a3b8',
+  },
+  metaText: {
+    marginTop: 3,
+    fontSize: 12,
+    color: '#64748b',
+  },
+  expiresText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  statusPill: {
+    backgroundColor: '#ecfdf5',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    color: '#10b981',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  qrButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 10,
+    paddingVertical: 10,
+    backgroundColor: '#2b6eff',
+  },
+  qrButtonDisabled: {
+    backgroundColor: '#f1f5f9',
+  },
+  qrButtonText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  qrButtonTextDisabled: {
+    color: '#94a3b8',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalShop: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1a2b4b',
+    textAlign: 'center',
+  },
+  modalOffer: {
+    marginTop: 4,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  qrBox: {
+    marginTop: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#dbeafe',
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: '#ffffff',
+  },
+  modalHint: {
+    color: '#94a3b8',
+    fontSize: 13,
+    marginBottom: 14,
+  },
+  closeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#2b6eff',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  closeButtonText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  emptyCard: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    padding: 16,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  emptySubtitle: {
+    marginTop: 6,
+    fontSize: 13,
+    color: '#64748b',
+  },
+});

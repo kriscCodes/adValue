@@ -5,6 +5,7 @@ from .views import (
     GoogleLoginView,
     LoginView,
     RegisterView,
+    RewardsView,
     profileView,
     SavedBusinessesView,
 )
@@ -25,6 +26,7 @@ urlpatterns = [
     path("profile/", profileView.as_view(), name="profile"),
     path("saved-businesses/", SavedBusinessesView.as_view(), name="saved_businesses"),
     path("content/submissions/", ContentSubmissionView.as_view(), name="content_submissions"),
+    path("rewards/", RewardsView.as_view(), name="rewards"),
 
     # Business auth
     path("business/register/", BusinessRegisterView.as_view(), name="business_register"),

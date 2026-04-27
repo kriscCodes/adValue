@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.db import IntegrityError
+from datetime import timedelta
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -182,7 +183,104 @@ class profileView(APIView):
             "first_name": user.customer_first_name,
             "last_name": user.customer_last_name,
             "location_enabled": user.location_enabled,
+            "notifications_enabled": user.notifications_enabled,
         })
+
+    def patch(self, request):
+        user = request.user
+        changed_fields = []
+
+        email = request.data.get("email")
+        if email is not None:
+            email = str(email).strip()
+            if not email:
+                return Response(
+                    {"error": "email cannot be empty."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            existing = User.objects.filter(customer_email=email).exclude(customer_id=user.customer_id).exists()
+            if existing:
+                return Response(
+                    {"error": "A user with this email already exists."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.customer_email = email
+            changed_fields.append("customer_email")
+
+        location_enabled = request.data.get("location_enabled")
+        if location_enabled is not None:
+            if isinstance(location_enabled, bool):
+                parsed_location = location_enabled
+            elif isinstance(location_enabled, str):
+                lowered = location_enabled.strip().lower()
+                if lowered in {"true", "1", "yes", "on"}:
+                    parsed_location = True
+                elif lowered in {"false", "0", "no", "off"}:
+                    parsed_location = False
+                else:
+                    return Response(
+                        {"error": "location_enabled must be a boolean."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                return Response(
+                    {"error": "location_enabled must be a boolean."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.location_enabled = parsed_location
+            changed_fields.append("location_enabled")
+
+        notifications_enabled = request.data.get("notifications_enabled")
+        if notifications_enabled is not None:
+            if isinstance(notifications_enabled, bool):
+                parsed_notifications = notifications_enabled
+            elif isinstance(notifications_enabled, str):
+                lowered = notifications_enabled.strip().lower()
+                if lowered in {"true", "1", "yes", "on"}:
+                    parsed_notifications = True
+                elif lowered in {"false", "0", "no", "off"}:
+                    parsed_notifications = False
+                else:
+                    return Response(
+                        {"error": "notifications_enabled must be a boolean."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                return Response(
+                    {"error": "notifications_enabled must be a boolean."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.notifications_enabled = parsed_notifications
+            changed_fields.append("notifications_enabled")
+
+        password = request.data.get("password")
+        if password is not None:
+            password = str(password)
+            if len(password) < 8:
+                return Response(
+                    {"error": "password must be at least 8 characters."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.set_password(password)
+            changed_fields.append("password")
+
+        if changed_fields:
+            user.save(update_fields=list(set(changed_fields)))
+
+        return Response(
+            {
+                "message": "Profile updated.",
+                "profile": {
+                    "id": user.customer_id,
+                    "email": user.customer_email,
+                    "first_name": user.customer_first_name,
+                    "last_name": user.customer_last_name,
+                    "location_enabled": user.location_enabled,
+                    "notifications_enabled": user.notifications_enabled,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class SavedBusinessesView(APIView):
@@ -386,3 +484,38 @@ class ContentSubmissionView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class RewardsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        approved_submissions = (
+            Content.objects.filter(
+                customer=request.user,
+                status=Content.StatusChoices.VALID,
+            )
+            .order_by("-submitted_at")
+        )
+
+        business_ids = {item.business_id for item in approved_submissions}
+        businesses = Business.objects.filter(business_id__in=business_ids)
+        business_name_by_id = {item.business_id: item.business_name for item in businesses}
+
+        rewards = []
+        for item in approved_submissions:
+            rewards.append(
+                {
+                    "reward_id": item.content_id,
+                    "shop": business_name_by_id.get(item.business_id, f"Business #{item.business_id}"),
+                    "offer": "$10 IN-STORE CREDIT",
+                    "expires": (item.submitted_at + timedelta(days=30)).date().isoformat(),
+                    "status": "READY TO USE",
+                    "platform": item.platform,
+                    "content_url": item.content_url,
+                    "claimed_views": item.views,
+                    "submitted_at": item.submitted_at,
+                }
+            )
+
+        return Response({"rewards": rewards}, status=status.HTTP_200_OK)

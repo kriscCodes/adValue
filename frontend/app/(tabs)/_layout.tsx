@@ -52,6 +52,13 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="rewards"
+          options={{
+            title: 'Rewards',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="ticket.fill" color={color} />,
+          }}
+        />
+        <Tabs.Screen
           name="customer-verification-form"
           options={{
             title: 'Verification',
