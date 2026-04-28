@@ -69,7 +69,7 @@ export default function RoleSelectPage() {
         className="bg-white border-2 border-blue-600 rounded-2xl p-6 items-center mb-4"
       >
         <Ionicons name="person-outline" size={40} color="#2563eb" style={{ marginBottom: 12 }} />
-        <Text className="text-xl font-bold text-blue-600 mb-1">I'm a Customer</Text>
+        <Text className="text-xl font-bold text-blue-600 mb-1">I&apos;m a Customer</Text>
         <Text className="text-sm text-gray-500 text-center">
           Discover local businesses, leave reviews, and earn rewards
         </Text>
@@ -80,7 +80,7 @@ export default function RoleSelectPage() {
         className="bg-blue-600 rounded-2xl p-6 items-center"
       >
         <Ionicons name="storefront-outline" size={40} color="#fff" style={{ marginBottom: 12 }} />
-        <Text className="text-xl font-bold text-white mb-1">I'm a Business</Text>
+        <Text className="text-xl font-bold text-white mb-1">I&apos;m a Business</Text>
         <Text className="text-sm text-blue-100 text-center">
           Connect with your community and grow your customer base
         </Text>

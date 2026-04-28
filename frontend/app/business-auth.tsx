@@ -3,7 +3,6 @@ import { useBusinessAuth } from '@/hooks/useBusinessAuth';
 import { AuthTextInput } from '@/components/AuthTextInput';
 import { AuthToggleButton } from '@/components/AuthToggleButton';
 import { BackToRoleSelectBar } from '@/components/BackToRoleSelectBar';
-import { BrandingSection } from '@/components/BrandingSection';
 
 export default function BusinessAuthPage() {
   const { mode, toggleMode, state, updateField, handleLogin, handleSignup } = useBusinessAuth();
@@ -100,25 +99,12 @@ export default function BusinessAuthPage() {
     </View>
   );
 
-  if (isDesktop) {
-    return (
-      <View className="flex-1 flex-row bg-white">
-        <BrandingSection isDesktop />
-        <View className="flex-1 bg-gray-50 justify-center items-center p-12">
-          <ScrollView className="w-full max-w-md" showsVerticalScrollIndicator={false}>
-            {form}
-          </ScrollView>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <ScrollView className="flex-1 bg-gray-50">
-      <View className="flex-1 justify-center items-center px-6 pb-6">
+      <View className={`flex-1 justify-center items-center pb-6 ${isDesktop ? 'px-12' : 'px-6'}`}>
         <BackToRoleSelectBar />
         <Text className="text-5xl font-bold text-blue-600 mb-8">adValue</Text>
-        <View className="w-full">{form}</View>
+        <View className={`w-full ${isDesktop ? 'max-w-md' : ''}`}>{form}</View>
       </View>
     </ScrollView>
   );
