@@ -3,9 +3,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db.models import Q
+from django.db.models import Q, Sum
+from django.db.models.functions import TruncDate
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from datetime import timedelta
 
 from .models import Business, Content
 
@@ -28,40 +31,31 @@ def get_tokens_for_business(business):
 
 def get_business_from_token(request):
     """Decode JWT and return the Business, or None if invalid/not a business token."""
-    from rest_framework_simplejwt.tokens import AccessToken as AT
+    from rest_framework_simplejwt.state import token_backend
+    from rest_framework_simplejwt.exceptions import TokenError, TokenBackendError
+
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return None
 
     raw_token = auth.split(" ")[1]
 
-    def _resolve_business_id(token_obj):
-        business_id = token_obj.get("business_id")
-        if not business_id:
-            return None
-        token_type = token_obj.get("type")
-        if token_type is not None and token_type != "business":
-            return None
-        return business_id
+    try:
+        payload = token_backend.decode(raw_token, verify=True)
+    except (TokenError, TokenBackendError):
+        return None
+
+    business_id = payload.get("business_id")
+    if not business_id:
+        return None
+
+    if payload.get("type") != "business":
+        return None
 
     try:
-        access_token = AT(raw_token)
-        business_id = _resolve_business_id(access_token)
-        if business_id:
-            return Business.objects.get(business_id=business_id)
-    except Exception:
-        pass
-
-    # Backward/fault tolerance: allow refresh tokens from business auth flow as fallback.
-    try:
-        refresh_token = RefreshToken(raw_token)
-        business_id = _resolve_business_id(refresh_token)
-        if business_id:
-            return Business.objects.get(business_id=business_id)
-    except Exception:
-        pass
-
-    return None
+        return Business.objects.get(business_id=business_id)
+    except Business.DoesNotExist:
+        return None
 
 
 class BusinessRegisterView(APIView):
@@ -355,6 +349,78 @@ class BusinessContentReviewView(APIView):
             {
                 "content_id": submission.content_id,
                 "status": submission.status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class BusinessDashboardView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        business = get_business_from_token(request)
+        if not business:
+            return Response({"error": "Unauthorized."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        qs = Content.objects.filter(business_id=business.business_id)
+
+        # Total views per platform
+        platform_totals = (
+            qs.values("platform")
+            .annotate(total=Sum("views"))
+        )
+        total_views = {row["platform"]: row["total"] for row in platform_totals}
+
+        # Fill in 0 for platforms with no submissions
+        for p in ("tiktok", "instagram", "youtube"):
+            total_views.setdefault(p, 0)
+
+        # Platforms actually used by this business
+        platforms = list(
+            qs.values_list("platform", flat=True).distinct()
+        )
+
+        # Views over time — last 30 days
+        since = timezone.now() - timedelta(days=30)
+        views_over_time = list(
+            qs.filter(submitted_at__gte=since)
+            .annotate(date=TruncDate("submitted_at"))
+            .values("date")
+            .annotate(total=Sum("views"))
+            .order_by("date")
+            .values("date", "total")
+        )
+
+        # Content submissions with creator name
+        submissions = (
+            qs.select_related("customer")
+            .order_by("-submitted_at")[:20]
+        )
+        creators = [
+            {
+                "content_id": item.content_id,
+                "name": f"{item.customer.customer_first_name} {item.customer.customer_last_name}".strip()
+                        or item.customer.customer_email,
+                "platform": item.platform,
+                "views": item.views,
+                "content_url": item.content_url,
+                "status": item.status,
+                "submitted_at": item.submitted_at.isoformat(),
+            }
+            for item in submissions
+        ]
+
+        return Response(
+            {
+                "business_name": business.business_name,
+                "platforms": platforms,
+                "total_views": total_views,
+                "views_over_time": [
+                    {"date": row["date"].isoformat(), "views": row["total"]}
+                    for row in views_over_time
+                ],
+                "creators": creators,
             },
             status=status.HTTP_200_OK,
         )

@@ -13,7 +13,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { BUSINESSES, type Business } from './explore-shared';
+import {
+  HUNTER_COLLEGE_CENTER,
+  type Business,
+} from './explore-shared';
+import { useExplorePlaces } from '@/hooks/useExplorePlaces';
 import { useSavedBusinesses } from '@/hooks/useSavedBusinesses';
 
 const LEAFLET_CSS_ID = 'advalue-leaflet-css';
@@ -44,17 +48,33 @@ type LeafletModules = {
   MapContainer: typeof import('react-leaflet').MapContainer;
   Marker: typeof import('react-leaflet').Marker;
   TileLayer: typeof import('react-leaflet').TileLayer;
+  CircleMarker: typeof import('react-leaflet').CircleMarker;
 };
 
 export default function ExploreScreenWeb() {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [search, setSearch] = useState('');
   const [leafletMods, setLeafletMods] = useState<LeafletModules | null>(null);
+  const [userLatLng, setUserLatLng] = useState<[number, number] | null>(null);
+  const explorePlaces = useExplorePlaces();
   const { loading: savedLoading, isSaved, toggleSaved } = useSavedBusinesses();
   const openDirections = async (business: Business) => {
     const url = `https://maps.google.com/?q=${business.lat},${business.lng}`;
     await Linking.openURL(url);
   };
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLatLng([pos.coords.latitude, pos.coords.longitude]);
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+    );
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +92,7 @@ export default function ExploreScreenWeb() {
           MapContainer: reactLeaflet.MapContainer,
           Marker: reactLeaflet.Marker,
           TileLayer: reactLeaflet.TileLayer,
+          CircleMarker: reactLeaflet.CircleMarker,
         });
       } catch {
         if (!cancelled) {
@@ -99,15 +120,15 @@ export default function ExploreScreenWeb() {
   const filteredBusinesses = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) {
-      return BUSINESSES;
+      return explorePlaces;
     }
-    return BUSINESSES.filter(
+    return explorePlaces.filter(
       (business) =>
         business.name.toLowerCase().includes(term) || business.type.toLowerCase().includes(term),
     );
-  }, [search]);
+  }, [search, explorePlaces]);
 
-  const { MapContainer, Marker, TileLayer } = leafletMods ?? {};
+  const { MapContainer, Marker, TileLayer, CircleMarker } = leafletMods ?? {};
 
   return (
     <View style={styles.root}>
@@ -124,13 +145,25 @@ export default function ExploreScreenWeb() {
       </View>
 
       <View style={styles.mapWrap}>
-        {leafletMods && customIcon && MapContainer && Marker && TileLayer ? (
+        {leafletMods && customIcon && MapContainer && Marker && TileLayer && CircleMarker ? (
           <MapContainer
-            center={[40.855, -73.89]}
-            zoom={14}
+            center={[HUNTER_COLLEGE_CENTER.latitude, HUNTER_COLLEGE_CENTER.longitude]}
+            zoom={15}
             style={{ height: '100%', width: '100%', zIndex: 0 }}
             scrollWheelZoom>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+            {userLatLng ? (
+              <CircleMarker
+                center={userLatLng}
+                radius={10}
+                pathOptions={{
+                  color: '#2563eb',
+                  fillColor: '#2563eb',
+                  fillOpacity: 0.95,
+                  weight: 2,
+                }}
+              />
+            ) : null}
             {filteredBusinesses.map((business) => (
               <Marker
                 key={business.id}
@@ -200,7 +233,9 @@ export default function ExploreScreenWeb() {
                   <Text style={styles.modalRating}>
                     ★ {selectedBusiness.rating} ({selectedBusiness.type})
                   </Text>
-                  <Text style={styles.modalInfo}>97 West Fordham Road, Bronx</Text>
+                  <Text style={styles.modalInfo}>
+                    {selectedBusiness.address ?? '97 West Fordham Road, Bronx'}
+                  </Text>
                   <Text style={styles.modalInfo}>(212) 555-0111</Text>
                   <Pressable style={styles.ctaButton} onPress={() => openDirections(selectedBusiness)}>
                     <Text style={styles.ctaText}>Get Directions</Text>

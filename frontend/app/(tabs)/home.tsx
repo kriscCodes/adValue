@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/customer/ScreenState';
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
+import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 type SubmissionStatus = 'pending' | 'valid' | 'rejected';
 type Submission = {
@@ -58,6 +59,7 @@ export default function HomeScreen() {
 
         if (submissionsRes.status === 401 || rewardsRes.status === 401) {
           await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+          await stopSavedBusinessGeofences();
           if (!cancelled) {
             router.replace('/auth');
           }

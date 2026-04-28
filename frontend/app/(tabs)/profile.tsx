@@ -15,6 +15,7 @@ import {
 import { router, Href } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
+import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 import { Feather } from '@expo/vector-icons';
 import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
 import { clearAllSessions, clearCustomerSession } from '@/lib/session';
@@ -85,6 +86,7 @@ export default function ProfileTab() {
         });
         if (res.status === 401) {
           await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+          await stopSavedBusinessGeofences();
           if (!cancelled) router.replace('/auth' as Href);
           return;
         }
@@ -130,6 +132,7 @@ export default function ProfileTab() {
 
   const handleSignOut = async () => {
     await clearCustomerSession();
+    await stopSavedBusinessGeofences();
     router.replace('/auth' as Href);
   };
   const handleSignOutAll = async () => {
@@ -163,6 +166,7 @@ export default function ProfileTab() {
       const data = await res.json();
       if (res.status === 401) {
         await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+        await stopSavedBusinessGeofences();
         router.replace('/auth' as Href);
         return;
       }

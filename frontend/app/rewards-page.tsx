@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
 import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/customer/ScreenState';
+import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 type RewardStatus = 'READY TO USE' | 'USED';
 type Reward = {
@@ -66,6 +67,7 @@ export default function RewardsPageScreen() {
 
         if (res.status === 401) {
           await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+          await stopSavedBusinessGeofences();
           if (!cancelled) router.replace('/auth');
           return;
         }

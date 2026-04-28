@@ -1,3 +1,5 @@
+import '@/lib/geofencing-task';
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -8,8 +10,10 @@ import { useFonts } from 'expo-font';
 import 'react-native-reanimated';
 import './global.css';
 
+import { SavedGeofenceBootstrap } from '@/components/SavedGeofenceBootstrap';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getSessionState, setLastActiveRole } from '@/lib/session';
+import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -64,6 +68,7 @@ export default function RootLayout() {
 
       const session = await getSessionState();
       if (!session.hasCustomerSession) {
+        await stopSavedBusinessGeofences();
         router.replace('/auth');
       } else {
         await setLastActiveRole('customer');
@@ -80,6 +85,7 @@ export default function RootLayout() {
   if (isCheckingAuth) {
     return (
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <SavedGeofenceBootstrap />
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" />
         </View>
@@ -89,6 +95,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <SavedGeofenceBootstrap />
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="role-select" options={{ headerShown: false }} />

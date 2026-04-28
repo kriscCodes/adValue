@@ -5,6 +5,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
 import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/customer/ScreenState';
+import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 type Submission = {
   content_id: number;
@@ -37,6 +38,7 @@ export default function ContentStatusScreen() {
 
       if (res.status === 401) {
         await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+        await stopSavedBusinessGeofences();
         router.replace('/auth');
         return;
       }
