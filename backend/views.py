@@ -1,6 +1,8 @@
 from django.http import JsonResponse
 from django.db import connection
 
+from backend.accounts.models import ExplorePlace
+
 # SQL column names (must match test_customer table)
 COL_NAME = "customer_name"
 COL_EMAIL = "email_address"
@@ -38,3 +40,24 @@ def get_content_creators(request):
         })
 
     return JsonResponse({"content_creators": data})
+
+
+def explore_places(request):
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    rows = ExplorePlace.objects.order_by("external_id")
+    places = [
+        {
+            "id": p.external_id,
+            "name": p.name,
+            "lat": p.latitude,
+            "lng": p.longitude,
+            "rating": p.rating,
+            "type": p.place_type,
+            "img": p.img or "",
+            "address": p.address or "",
+        }
+        for p in rows
+    ]
+    return JsonResponse({"places": places})

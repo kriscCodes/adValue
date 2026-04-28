@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
+import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 const platforms = [
   { id: 'tiktok', label: 'TikTok', icon: Play },
@@ -55,6 +56,7 @@ export default function CustomerVerificationFormScreen() {
 
         if (res.status === 401) {
           await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+          await stopSavedBusinessGeofences();
           if (!cancelled) {
             router.replace('/auth');
           }
@@ -146,6 +148,7 @@ export default function CustomerVerificationFormScreen() {
       const data = await res.json();
       if (res.status === 401) {
         await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+        await stopSavedBusinessGeofences();
         router.replace('/auth');
         return;
       }

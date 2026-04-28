@@ -21,5 +21,6 @@ from backend import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/content-creators/', views.get_content_creators),
+    path('api/explore/places/', views.explore_places),
     path('api/auth/', include('backend.accounts.urls')),
 ]

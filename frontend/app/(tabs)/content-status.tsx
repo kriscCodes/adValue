@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
+import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 type Submission = {
   content_id: number;
@@ -35,6 +36,7 @@ export default function ContentStatusScreen() {
 
       if (res.status === 401) {
         await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+        await stopSavedBusinessGeofences();
         router.replace('/auth');
         return;
       }

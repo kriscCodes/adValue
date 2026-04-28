@@ -130,3 +130,20 @@ class Content(models.Model):
 
     class Meta:
         db_table = "Content"
+
+
+class ExplorePlace(models.Model):
+    """Public explore-map POIs; `external_id` matches app `Business.id` / saved-business keys."""
+
+    explore_place_id = models.AutoField(primary_key=True)
+    external_id = models.IntegerField(unique=True)
+    name = models.CharField(max_length=255)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    rating = models.FloatField(default=0)
+    place_type = models.CharField(max_length=120, blank=True, default="")
+    img = models.URLField(max_length=500, blank=True, default="")
+    address = models.CharField(max_length=300, blank=True, default="")
+
+    class Meta:
+        db_table = "ExplorePlace"
