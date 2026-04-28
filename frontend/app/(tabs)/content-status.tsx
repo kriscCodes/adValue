@@ -3,6 +3,8 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
+import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
+import { EmptyState, ErrorState, LoadingState } from '@/components/customer/ScreenState';
 
 type Submission = {
   content_id: number;
@@ -77,18 +79,20 @@ export default function ContentStatusScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
-      <Text style={styles.title}>My Content Status</Text>
-      <Text style={styles.subtitle}>Track approval status for your submitted content.</Text>
+      <CustomerScreenHeader
+        title="My Content Status"
+        subtitle="Track approval status for your submitted content."
+      />
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <ErrorState message={error} /> : null}
 
       {loading ? (
-        <Text style={styles.helperText}>Loading submissions...</Text>
+        <LoadingState message="Loading submissions..." />
       ) : submissions.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No submissions yet</Text>
-          <Text style={styles.emptySubtitle}>Submit a verification request to see it here.</Text>
-        </View>
+        <EmptyState
+          title="No submissions yet"
+          subtitle="Submit a verification request to see it here."
+        />
       ) : (
         submissions.map((item) => (
           <View key={item.content_id} style={styles.card}>
@@ -117,43 +121,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF9FF',
     padding: 16,
     paddingBottom: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#1E56A0',
-  },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#64748B',
-    marginBottom: 12,
-  },
-  helperText: {
-    fontSize: 14,
-    color: '#475569',
-  },
-  errorText: {
-    color: '#dc2626',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  emptyCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#dbeafe',
-    padding: 16,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
-  emptySubtitle: {
-    marginTop: 6,
-    fontSize: 13,
-    color: '#64748B',
   },
   card: {
     backgroundColor: '#ffffff',

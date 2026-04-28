@@ -54,26 +54,19 @@ export default function TabLayout() {
         <Tabs.Screen
           name="rewards"
           options={{
-            title: 'Rewards',
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="ticket.fill" color={color} />,
+            href: null,
           }}
         />
         <Tabs.Screen
           name="customer-verification-form"
           options={{
-            title: 'Verification',
-            tabBarIcon: ({ color }) => (
-              <IconSymbol size={28} name="checkmark.shield.fill" color={color} />
-            ),
+            href: null,
           }}
         />
         <Tabs.Screen
           name="content-status"
           options={{
-            title: 'Content Status',
-            tabBarIcon: ({ color }) => (
-              <IconSymbol size={28} name="list.bullet.rectangle.fill" color={color} />
-            ),
+            href: null,
           }}
         />
       </Tabs>
