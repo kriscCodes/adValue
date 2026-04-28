@@ -11,6 +11,7 @@ from .views import (
 )
 from .business_views import (
     BusinessContentReviewView,
+    BusinessDashboardView,
     BusinessSearchView,
     BusinessRegisterView,
     BusinessLoginView,
@@ -34,4 +35,5 @@ urlpatterns = [
     path("business/profile/", BusinessProfileView.as_view(), name="business_profile"),
     path("business/content-submissions/", BusinessContentReviewView.as_view(), name="business_content_submissions"),
     path("business/search/", BusinessSearchView.as_view(), name="business_search"),
+    path("business/dashboard/", BusinessDashboardView.as_view(), name="business_dashboard"),
 ]
