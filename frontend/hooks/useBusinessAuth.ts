@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE, BUSINESS_ACCESS_KEY, BUSINESS_REFRESH_KEY } from '@/lib/auth-config';
+import { setLastActiveRole } from '@/lib/session';
 
 type AuthMode = 'login' | 'signup';
 
@@ -64,6 +65,7 @@ export function useBusinessAuth() {
         [BUSINESS_ACCESS_KEY, data.access],
         [BUSINESS_REFRESH_KEY, data.refresh],
       ]);
+      await setLastActiveRole('business');
       router.replace({ pathname: '/business' });
     } catch {
       setError('Network error');
