@@ -23,9 +23,8 @@ function googleIosUrlScheme() {
   }
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
   if (!iosClientId) {
-    throw new Error(
-      '[Google Sign-In] Set EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID (or EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME) in frontend/.env — required for the Expo config plugin iosUrlScheme.',
-    );
+    // Not required for web builds — return a placeholder so the config loads.
+    return 'com.googleusercontent.apps.placeholder';
   }
   const idPart = iosClientId.replace(/\.apps\.googleusercontent\.com$/i, '');
   return `com.googleusercontent.apps.${idPart}`;

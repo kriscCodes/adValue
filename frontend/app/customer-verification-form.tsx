@@ -3,7 +3,6 @@ import { Camera, Link as LinkIcon, Play } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
+import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
+import { ErrorState, LoadingState } from '@/components/customer/ScreenState';
 import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 const platforms = [
@@ -175,15 +176,17 @@ export default function CustomerVerificationFormScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color="#3b63cc" />
-        <Text style={styles.loadingText}>Verifying session...</Text>
+        <LoadingState message="Verifying session..." />
       </View>
     );
   }
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
-      <Text style={styles.heading}>Customer Verification Form</Text>
+      <CustomerScreenHeader
+        title="Customer Verification Form"
+        subtitle="Choose a business, share your post link, and submit your claimed views."
+      />
 
       <View style={styles.card}>
         <View style={styles.businessRow}>
@@ -289,7 +292,7 @@ export default function CustomerVerificationFormScreen() {
           keyboardType="numeric"
         />
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <ErrorState message={error} /> : null}
         {success ? <Text style={styles.successText}>{success}</Text> : null}
 
         <Pressable
@@ -318,16 +321,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#f0f7ff',
     gap: 10,
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: 14,
-  },
-  heading: {
-    fontSize: 28,
-    color: '#2a59c3',
-    fontWeight: '800',
-    marginBottom: 16,
   },
   card: {
     backgroundColor: '#fff',
@@ -469,12 +462,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 14,
-  },
-  errorText: {
-    marginTop: 4,
-    color: '#dc2626',
-    fontSize: 12,
-    fontWeight: '600',
   },
   successText: {
     marginTop: 4,

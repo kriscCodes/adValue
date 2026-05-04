@@ -15,6 +15,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
+import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
+import { EmptyState, ErrorState, LoadingState } from '@/components/customer/ScreenState';
 import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 type RewardStatus = 'READY TO USE' | 'USED';
@@ -112,9 +114,11 @@ export default function RewardsPageScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>Active Reward Tickets</Text>
-        <Text style={styles.subheading}>Manage and redeem your exclusive local business offers.</Text>
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <CustomerScreenHeader
+          title="Active Reward Tickets"
+          subtitle="Manage and redeem approved rewards from valid submissions."
+        />
+        {error ? <ErrorState message={error} /> : null}
 
         <View style={styles.filters}>
           <Pressable
@@ -138,7 +142,7 @@ export default function RewardsPageScreen() {
         </View>
 
         {loading ? (
-          <Text style={styles.helperText}>Loading rewards...</Text>
+          <LoadingState message="Loading rewards..." />
         ) : (
           <View style={[styles.cardsContainer, isWebGrid && styles.cardsContainerWeb]}>
           {filteredRewards.map((reward) => (
@@ -172,10 +176,10 @@ export default function RewardsPageScreen() {
             </View>
           ))}
           {filteredRewards.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>No rewards yet</Text>
-              <Text style={styles.emptySubtitle}>Rewards are generated after your content submission is approved.</Text>
-            </View>
+            <EmptyState
+              title="No rewards yet"
+              subtitle="Rewards are generated after your content submission is approved."
+            />
           ) : null}
           </View>
         )}
@@ -212,27 +216,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 24,
-  },
-  heading: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1a2b4b',
-  },
-  subheading: {
-    marginTop: 6,
-    marginBottom: 14,
-    color: '#64748b',
-    fontSize: 14,
-  },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  helperText: {
-    fontSize: 14,
-    color: '#475569',
   },
   filters: {
     flexDirection: 'row',
@@ -400,22 +383,5 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 14,
-  },
-  emptyCard: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
-    padding: 16,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1f2937',
-  },
-  emptySubtitle: {
-    marginTop: 6,
-    fontSize: 13,
-    color: '#64748b',
   },
 });

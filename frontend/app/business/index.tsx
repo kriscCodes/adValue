@@ -1,31 +1,34 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
+  ActivityIndicator,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
-  TextInput,
   TouchableOpacity,
-  ScrollView,
-  Platform,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Search, Settings, MoreHorizontal } from 'lucide-react-native';
-import { router } from 'expo-router';
-import Svg, { Polyline, Line, Text as SvgText } from 'react-native-svg';
+import { MoreHorizontal, Settings } from 'lucide-react-native';
+import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
 
-const PLATFORMS = ['Instagram', 'Youtube', 'Tiktok'];
+import { DashboardData, useDashboard } from '@/hooks/useDashboard';
 
-const CREATORS = [
-  { name: 'Faikar', views: '10k', platform: 'Tiktok' },
-  { name: 'Kris', views: '1k', platform: 'Instagram' },
-  { name: 'Jasmine', views: '100k', platform: 'Tiktok' },
-  { name: 'Jasmine', views: '100k', platform: 'Tiktok' },
-];
+const PLATFORM_LABELS: Record<string, string> = {
+  tiktok: 'TikTok',
+  instagram: 'Instagram',
+  youtube: 'YouTube',
+};
 
-// Simple placeholder line chart drawn with SVG
-function ViewsChart() {
-  const W = 280;
-  const H = 180;
+function ViewsChart({
+  points: rawPoints,
+  width,
+}: {
+  points: { date: string; views: number }[];
+  width: number;
+}) {
+  const W = width;
+  const H = 260;
   const padL = 36;
   const padB = 24;
   const padT = 8;
@@ -33,165 +36,175 @@ function ViewsChart() {
   const chartW = W - padL - padR;
   const chartH = H - padB - padT;
 
-  // Dummy data points (0–100 range)
-  const data = [10, 30, 20, 50, 40, 60, 45];
-  const maxVal = 100;
-  const points = data
-    .map((v, i) => {
-      const x = padL + (i / (data.length - 1)) * chartW;
-      const y = padT + chartH - (v / maxVal) * chartH;
-      return `${x},${y}`;
-    })
-    .join(' ');
+  const points = rawPoints
+    .slice()
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const yLabels = [0, 25, 50, 75, 100];
+  const maxVal = points.length > 0 ? Math.max(...points.map((p) => p.views), 1) : 1;
+  const yLabels = [0, Math.round(maxVal * 0.25), Math.round(maxVal * 0.5), Math.round(maxVal * 0.75), maxVal];
+
+  const linePoints =
+    points.length === 1
+      ? [
+          { date: points[0].date, views: points[0].views },
+          { date: points[0].date, views: points[0].views },
+        ]
+      : points;
+
+  const pointsStr =
+    linePoints.length > 1
+      ? linePoints
+          .map((p, i) => {
+            const x = padL + (i / (linePoints.length - 1)) * chartW;
+            const y = padT + chartH - (p.views / maxVal) * chartH;
+            return `${x},${y}`;
+          })
+          .join(' ')
+      : '';
 
   return (
     <Svg width={W} height={H}>
-      {/* Y-axis gridlines & labels */}
       {yLabels.map((label) => {
         const y = padT + chartH - (label / maxVal) * chartH;
         return (
           <React.Fragment key={label}>
-            <Line
-              x1={padL}
-              y1={y}
-              x2={W - padR}
-              y2={y}
-              stroke="#e2e8f0"
-              strokeWidth="1"
-            />
-            <SvgText
-              x={padL - 4}
-              y={y + 4}
-              fontSize="8"
-              fill="#94a3b8"
-              textAnchor="end">
-              {label}
+            <Line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#e2e8f0" strokeWidth="1" />
+            <SvgText x={padL - 4} y={y + 4} fontSize="8" fill="#94a3b8" textAnchor="end">
+              {label >= 1000 ? `${Math.round(label / 1000)}k` : label}
             </SvgText>
           </React.Fragment>
         );
       })}
-      {/* X-axis label */}
-      <SvgText
-        x={W / 2}
-        y={H - 4}
-        fontSize="9"
-        fill="#94a3b8"
-        textAnchor="middle">
+      <SvgText x={W / 2} y={H - 4} fontSize="9" fill="#94a3b8" textAnchor="middle">
         Days
       </SvgText>
-      {/* Y-axis label */}
       <SvgText
         x={8}
         y={H / 2}
         fontSize="9"
         fill="#94a3b8"
         textAnchor="middle"
-        transform={`rotate(-90, 8, ${H / 2})`}>
+        transform={`rotate(-90, 8, ${H / 2})`}
+      >
         Views
       </SvgText>
-      {/* Line */}
-      <Polyline
-        points={points}
-        fill="none"
-        stroke="#3b82f6"
-        strokeWidth="2"
-      />
+      {pointsStr ? <Polyline points={pointsStr} fill="none" stroke="#3b82f6" strokeWidth="3" /> : null}
+      {points.length === 1 ? (
+        <Circle
+          cx={padL + chartW / 2}
+          cy={padT + chartH - (points[0].views / maxVal) * chartH}
+          r={5}
+          fill="#3b82f6"
+        />
+      ) : null}
     </Svg>
   );
 }
 
-export default function BusinessDashboard() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const showInlineNav = Platform.OS !== 'web';
+function Dashboard({ data }: { data: DashboardData }) {
+  const { width } = useWindowDimensions();
+  const isNarrow = width < 1024;
+  const chartWidth = isNarrow ? Math.max(300, width - 96) : 460;
+  const displayPlatforms = ['tiktok', 'instagram', 'youtube'];
+  const totalAllViews = Object.values(data.total_views).reduce((a, b) => a + b, 0);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {showInlineNav && (
-        <View style={styles.navbar}>
-          <Text style={styles.logo}>adValue</Text>
-          <View style={styles.searchBar}>
-            <Search size={14} color="#94a3b8" style={{ marginRight: 6 }} />
-            <TextInput
-              placeholder="Search The Bronx..."
-              placeholderTextColor="#94a3b8"
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-          <View style={styles.navIcons}>
-            <Bell size={20} color="#64748b" style={{ marginRight: 12 }} />
-            <View style={styles.menuLines}>
-              {[0, 1, 2].map((i) => (
-                <View key={i} style={styles.menuLine} />
-              ))}
-            </View>
-            <TouchableOpacity onPress={() => router.push('/business/profile')}>
-              <View style={styles.avatarCircle} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <Text style={styles.businessName}>{data.business_name}</Text>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Business name */}
-        <Text style={styles.businessName}>Blue Doors Darmawangsa</Text>
-
-        {/* Platform tags */}
+      {data.platforms.length > 0 && (
         <View style={styles.tagsRow}>
-          {PLATFORMS.map((p) => (
+          {data.platforms.map((p) => (
             <View key={p} style={styles.tag}>
-              <Text style={styles.tagText}>{p}</Text>
+              <Text style={styles.tagText}>{PLATFORM_LABELS[p] ?? p}</Text>
             </View>
           ))}
         </View>
+      )}
 
-        {/* Chart + Stats row */}
-        <View style={styles.statsRow}>
-          {/* Chart card */}
-          <View style={[styles.card, styles.chartCard]}>
-            <ViewsChart />
-          </View>
-
-          {/* Total views card */}
-          <View style={[styles.card, styles.viewsCard]}>
-            <View style={styles.viewsHeader}>
-              <Text style={styles.viewsTitle}>Total views</Text>
-              <Settings size={16} color="#64748b" />
-            </View>
-            <Text style={styles.viewsCount}>0</Text>
-            <View style={styles.divider} />
-            {PLATFORMS.map((p) => (
-              <View key={p} style={styles.platformRow}>
-                <Text style={styles.platformName}>{p}</Text>
-                <Text style={styles.platformCount}>0</Text>
-              </View>
-            ))}
-          </View>
+      <View style={[styles.statsRow, isNarrow && styles.statsColumn]}>
+        <View style={[styles.card, styles.chartCard]}>
+          <ViewsChart points={data.views_over_time} width={chartWidth} />
         </View>
+        <View style={[styles.card, styles.viewsCard]}>
+          <View style={styles.viewsHeader}>
+            <Text style={styles.viewsTitle}>Total views</Text>
+            <Settings size={16} color="#64748b" />
+          </View>
+          <Text style={styles.viewsCount}>
+            {totalAllViews >= 1000 ? `${(totalAllViews / 1000).toFixed(1)}k` : totalAllViews}
+          </Text>
+          <View style={styles.divider} />
+          {displayPlatforms.map((p) => (
+            <View key={p} style={styles.platformRow}>
+              <Text style={styles.platformName}>{PLATFORM_LABELS[p] ?? p}</Text>
+              <Text style={styles.platformCount}>{data.total_views[p] ?? 0}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
 
-        {/* Content Created */}
+      {data.creators.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Content Created</Text>
-          <View style={styles.creatorsGrid}>
-            {CREATORS.map((creator, idx) => (
-              <View key={idx} style={styles.creatorCard}>
-                <View style={styles.creatorImage} />
-                <Text style={styles.creatorName}>{creator.name}</Text>
-                <Text style={styles.creatorViews}>Views: {creator.views}</Text>
-                <Text style={styles.creatorPlatform}>{creator.platform}</Text>
-              </View>
-            ))}
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.creatorsGrid}>
+              {data.creators.slice(0, 8).map((creator) => (
+                <View key={creator.content_id} style={styles.creatorCard}>
+                  <View style={styles.creatorImage} />
+                  <Text style={styles.creatorName} numberOfLines={1}>
+                    {creator.name}
+                  </Text>
+                  <Text style={styles.creatorViews}>
+                    Views: {creator.views >= 1000 ? `${(creator.views / 1000).toFixed(1)}k` : creator.views}
+                  </Text>
+                  <Text style={styles.creatorPlatform}>
+                    {PLATFORM_LABELS[creator.platform] ?? creator.platform}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
         </View>
+      )}
 
-        {/* More button */}
+      {data.creators.length === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>No content submissions yet.</Text>
+        </View>
+      )}
+
+      {data.creators.length > 8 && (
         <TouchableOpacity style={styles.moreButton}>
           <MoreHorizontal size={20} color="#64748b" />
         </TouchableOpacity>
-      </ScrollView>
+      )}
+    </ScrollView>
+  );
+}
+
+export default function BusinessDashboard() {
+  const { data, loading, error } = useDashboard();
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>{error ?? 'Something went wrong.'}</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <Dashboard data={data} />
     </SafeAreaView>
   );
 }
@@ -199,61 +212,14 @@ export default function BusinessDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#f8fbff',
   },
-  navbar: {
-    flexDirection: 'row',
+  centered: {
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  logo: {
-    fontSize: 18,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    color: '#2563eb',
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    marginHorizontal: 12,
-    paddingHorizontal: 10,
-    height: 32,
-    borderRadius: 8,
-  },
-  searchInput: {
-    fontSize: 13,
-    flex: 1,
-    color: '#64748b',
-  },
-  navIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuLines: {
-    marginRight: 12,
-    gap: 3,
-  },
-  menuLine: {
-    width: 18,
-    height: 2,
-    backgroundColor: '#64748b',
-    borderRadius: 1,
-    marginVertical: 1,
-  },
-  avatarCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#fb923c',
   },
   scrollContent: {
-    padding: 20,
+    padding: 24,
   },
   businessName: {
     fontSize: 24,
@@ -279,21 +245,21 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
+    gap: 16,
+    marginBottom: 24,
+  },
+  statsColumn: {
+    flexDirection: 'column',
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    padding: 18,
   },
   chartCard: {
-    flex: 1.8,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 20,
@@ -313,7 +279,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   viewsCount: {
-    fontSize: 40,
+    fontSize: 48,
     fontWeight: '700',
     color: '#1e293b',
     marginBottom: 8,
@@ -338,24 +304,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   section: {
-    marginBottom: 20,
+    gap: 12,
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1e293b',
-    marginBottom: 12,
   },
   creatorsGrid: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
-    gap: 16,
+    gap: 20,
   },
   creatorCard: {
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 10,
-    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    padding: 18,
+    width: 150,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -365,33 +332,42 @@ const styles = StyleSheet.create({
   creatorImage: {
     width: '100%',
     aspectRatio: 1,
+    borderRadius: 8,
     backgroundColor: '#e2e8f0',
-    borderRadius: 6,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   creatorName: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#1e293b',
   },
   creatorViews: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#475569',
   },
   creatorPlatform: {
-    fontSize: 11,
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 14,
     color: '#94a3b8',
   },
   moreButton: {
     alignSelf: 'center',
     backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ef4444',
   },
 });

@@ -32,7 +32,7 @@ def get_tokens_for_business(business):
 def get_business_from_token(request):
     """Decode JWT and return the Business, or None if invalid/not a business token."""
     from rest_framework_simplejwt.state import token_backend
-    from rest_framework_simplejwt.exceptions import TokenError
+    from rest_framework_simplejwt.exceptions import TokenError, TokenBackendError
 
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
@@ -42,7 +42,7 @@ def get_business_from_token(request):
 
     try:
         payload = token_backend.decode(raw_token, verify=True)
-    except TokenError:
+    except (TokenError, TokenBackendError):
         return None
 
     business_id = payload.get("business_id")

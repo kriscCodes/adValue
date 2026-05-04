@@ -1,176 +1,216 @@
-import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router, type Href } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, MoreHorizontal } from 'lucide-react-native';
-import Svg, { Polyline, Line, Text as SvgText } from 'react-native-svg';
-import { useDashboard, DashboardData } from '@/hooks/useDashboard';
 
-const PLATFORM_LABELS: Record<string, string> = {
-  tiktok: 'TikTok',
-  instagram: 'Instagram',
-  youtube: 'YouTube',
+import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
+import { EmptyState, ErrorState, LoadingState } from '@/components/customer/ScreenState';
+import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
+import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
+
+type SubmissionStatus = 'pending' | 'valid' | 'rejected';
+type Submission = {
+  content_id: number;
+  platform: string;
+  status: SubmissionStatus;
+  submitted_at: string;
 };
 
-function ViewsChart({ points: rawPoints }: { points: { date: string; views: number }[] }) {
-  const W = 280;
-  const H = 180;
-  const padL = 36;
-  const padB = 24;
-  const padT = 8;
-  const padR = 8;
-  const chartW = W - padL - padR;
-  const chartH = H - padB - padT;
+type Reward = {
+  reward_id: number;
+  shop: string;
+  offer: string;
+  status: string;
+};
 
-  const maxVal = rawPoints.length > 0 ? Math.max(...rawPoints.map((p) => p.views), 1) : 1;
-  const yLabels = [0, Math.round(maxVal * 0.25), Math.round(maxVal * 0.5), Math.round(maxVal * 0.75), maxVal];
+type HomeAction = {
+  title: string;
+  description: string;
+  href: Href;
+  cta: string;
+};
 
-  const pointsStr =
-    rawPoints.length > 1
-      ? rawPoints
-          .map((p, i) => {
-            const x = padL + (i / (rawPoints.length - 1)) * chartW;
-            const y = padT + chartH - (p.views / maxVal) * chartH;
-            return `${x},${y}`;
-          })
-          .join(' ')
-      : '';
+export default function HomeScreen() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
 
-  return (
-    <Svg width={W} height={H}>
-      {yLabels.map((label) => {
-        const y = padT + chartH - (label / maxVal) * chartH;
-        return (
-          <React.Fragment key={label}>
-            <Line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#e2e8f0" strokeWidth="1" />
-            <SvgText x={padL - 4} y={y + 4} fontSize="8" fill="#94a3b8" textAnchor="end">
-              {label >= 1000 ? `${Math.round(label / 1000)}k` : label}
-            </SvgText>
-          </React.Fragment>
-        );
-      })}
-      <SvgText x={W / 2} y={H - 4} fontSize="9" fill="#94a3b8" textAnchor="middle">
-        Days
-      </SvgText>
-      <SvgText
-        x={8}
-        y={H / 2}
-        fontSize="9"
-        fill="#94a3b8"
-        textAnchor="middle"
-        transform={`rotate(-90, 8, ${H / 2})`}>
-        Views
-      </SvgText>
-      {pointsStr ? (
-        <Polyline points={pointsStr} fill="none" stroke="#3b82f6" strokeWidth="2" />
-      ) : null}
-    </Svg>
-  );
-}
+  useEffect(() => {
+    let cancelled = false;
 
-function Dashboard({ data }: { data: DashboardData }) {
-  const displayPlatforms = ['tiktok', 'instagram', 'youtube'];
-  const totalAllViews = Object.values(data.total_views).reduce((a, b) => a + b, 0);
+    async function loadHomeData() {
+      const token = await AsyncStorage.getItem(AUTH_ACCESS_KEY);
+      if (!token) {
+        router.replace('/auth');
+        return;
+      }
 
-  return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.businessName}>{data.business_name}</Text>
+      try {
+        const [submissionsRes, rewardsRes] = await Promise.all([
+          fetch(`${API_BASE}/api/auth/content/submissions/`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE}/api/auth/rewards/`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
 
-      {data.platforms.length > 0 && (
-        <View style={styles.tagsRow}>
-          {data.platforms.map((p) => (
-            <View key={p} style={styles.tag}>
-              <Text style={styles.tagText}>{PLATFORM_LABELS[p] ?? p}</Text>
-            </View>
-          ))}
-        </View>
-      )}
+        if (submissionsRes.status === 401 || rewardsRes.status === 401) {
+          await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+          await stopSavedBusinessGeofences();
+          if (!cancelled) {
+            router.replace('/auth');
+          }
+          return;
+        }
 
-      <View style={styles.statsRow}>
-        <View style={[styles.card, styles.chartCard]}>
-          <ViewsChart points={data.views_over_time} />
-        </View>
-        <View style={[styles.card, styles.viewsCard]}>
-          <View style={styles.viewsHeader}>
-            <Text style={styles.viewsTitle}>Total views</Text>
-            <Settings size={16} color="#64748b" />
-          </View>
-          <Text style={styles.viewsCount}>
-            {totalAllViews >= 1000 ? `${(totalAllViews / 1000).toFixed(1)}k` : totalAllViews}
-          </Text>
-          <View style={styles.divider} />
-          {displayPlatforms.map((p) => (
-            <View key={p} style={styles.platformRow}>
-              <Text style={styles.platformName}>{PLATFORM_LABELS[p]}</Text>
-              <Text style={styles.platformCount}>{data.total_views[p] ?? 0}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
+        const submissionsData = await submissionsRes.json();
+        const rewardsData = await rewardsRes.json();
 
-      {data.creators.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Content Created</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.creatorsGrid}>
-              {data.creators.slice(0, 8).map((creator) => (
-                <View key={creator.content_id} style={styles.creatorCard}>
-                  <View style={styles.creatorImage} />
-                  <Text style={styles.creatorName} numberOfLines={1}>{creator.name}</Text>
-                  <Text style={styles.creatorViews}>
-                    Views: {creator.views >= 1000 ? `${(creator.views / 1000).toFixed(1)}k` : creator.views}
-                  </Text>
-                  <Text style={styles.creatorPlatform}>{PLATFORM_LABELS[creator.platform] ?? creator.platform}</Text>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      )}
+        if (!submissionsRes.ok) {
+          if (!cancelled) setError(submissionsData.error || 'Failed to load submission summary.');
+          return;
+        }
+        if (!rewardsRes.ok) {
+          if (!cancelled) setError(rewardsData.error || 'Failed to load rewards summary.');
+          return;
+        }
 
-      {data.creators.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No content submissions yet.</Text>
-        </View>
-      )}
+        if (!cancelled) {
+          setSubmissions(submissionsData.submissions ?? []);
+          setRewards(rewardsData.rewards ?? []);
+        }
+      } catch {
+        if (!cancelled) setError('Network error while loading dashboard.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
 
-      {data.creators.length > 8 && (
-        <TouchableOpacity style={styles.moreButton}>
-          <MoreHorizontal size={20} color="#64748b" />
-        </TouchableOpacity>
-      )}
-    </ScrollView>
-  );
-}
+    loadHomeData();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-export default function BusinessDashboard() {
-  const { data, loading, error } = useDashboard();
+  const pendingCount = submissions.filter((item) => item.status === 'pending').length;
+  const approvedCount = submissions.filter((item) => item.status === 'valid').length;
+  const availableRewardsCount = rewards.filter((item) => item.status === 'READY TO USE').length;
 
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-      </SafeAreaView>
+  const highlightHref = useMemo<Href>(() => {
+    if (availableRewardsCount > 0) return '/rewards';
+    if (pendingCount > 0 || approvedCount > 0) return '/content-status';
+    return '/customer-verification-form';
+  }, [availableRewardsCount, approvedCount, pendingCount]);
+
+  const actions: HomeAction[] = [
+    {
+      title: 'Submit Verification',
+      description: 'Share your post details so businesses can review your content.',
+      href: '/customer-verification-form',
+      cta: 'Start Verification',
+    },
+    {
+      title: 'Track Content Status',
+      description: 'Check whether your submissions are pending, approved, or rejected.',
+      href: '/content-status',
+      cta: 'View Status',
+    },
+    {
+      title: 'Use Rewards',
+      description: 'Open reward tickets and redeem approved submission benefits.',
+      href: '/rewards',
+      cta: 'Open Rewards',
+    },
+  ];
+
+  const submissionActivity = submissions
+    .slice()
+    .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
+    .slice(0, 2)
+    .map(
+      (item) =>
+        `Submission #${item.content_id} (${item.platform}) is ${item.status === 'valid' ? 'approved' : item.status}.`,
     );
-  }
-
-  if (error || !data) {
-    return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
-        <Text style={styles.errorText}>{error ?? 'Something went wrong.'}</Text>
-      </SafeAreaView>
-    );
-  }
+  const rewardActivity = rewards.slice(0, 1).map((item) => `Reward available: ${item.offer} at ${item.shop}.`);
+  const activity = [...rewardActivity, ...submissionActivity].slice(0, 3);
 
   return (
     <SafeAreaView style={styles.container}>
-      <Dashboard data={data} />
+      <ScrollView contentContainerStyle={styles.content}>
+        <CustomerScreenHeader
+          title="Your adValue Dashboard"
+          subtitle="Submit content, track approvals, and redeem rewards."
+        />
+
+        {loading ? <LoadingState message="Loading dashboard..." /> : null}
+        {!loading && error ? <ErrorState message={error} /> : null}
+
+        {!loading && !error ? (
+          <View style={styles.snapshotRow}>
+            <Pressable style={styles.snapshotCard} onPress={() => router.push('/content-status')}>
+              <Text style={styles.snapshotLabel}>Pending Reviews</Text>
+              <Text style={styles.snapshotValue}>{pendingCount}</Text>
+            </Pressable>
+            <Pressable style={styles.snapshotCard} onPress={() => router.push('/content-status')}>
+              <Text style={styles.snapshotLabel}>Approved Posts</Text>
+              <Text style={styles.snapshotValue}>{approvedCount}</Text>
+            </Pressable>
+            <Pressable style={styles.snapshotCard} onPress={() => router.push('/rewards')}>
+              <Text style={styles.snapshotLabel}>Available Rewards</Text>
+              <Text style={styles.snapshotValue}>{availableRewardsCount}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Primary Actions</Text>
+          {actions.map((item) => (
+            <View key={item.title} style={styles.card}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardDescription}>{item.description}</Text>
+              <Pressable
+                style={[styles.button, item.href === highlightHref ? styles.buttonHighlight : null]}
+                onPress={() => router.push(item.href)}
+              >
+                <Text style={styles.buttonText}>{item.cta}</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          {activity.length === 0 ? (
+            <EmptyState
+              title="No activity yet"
+              subtitle="No activity yet — start by submitting a verification."
+            />
+          ) : (
+            <View style={styles.activityCard}>
+              {activity.map((entry) => (
+                <Text key={entry} style={styles.activityItem}>
+                  - {entry}
+                </Text>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.utilityRow}>
+          <Pressable onPress={() => router.push('/explore')}>
+            <Text style={styles.utilityLink}>Explore Businesses</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/saved')}>
+            <Text style={styles.utilityLink}>Saved Places</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/profile')}>
+            <Text style={styles.utilityLink}>Profile Settings</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -178,163 +218,103 @@ export default function BusinessDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#f8fbff',
   },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  content: {
+    padding: 16,
+    paddingBottom: 24,
   },
-  scrollContent: {
-    padding: 20,
-  },
-  businessName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 12,
-  },
-  tagsRow: {
+  snapshotRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  tag: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-  },
-  tagText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  chartCard: {
-    flex: 1.8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-  },
-  viewsCard: {
+  snapshotCard: {
     flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    borderRadius: 12,
+    padding: 10,
   },
-  viewsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  viewsTitle: {
-    fontSize: 15,
+  snapshotLabel: {
+    fontSize: 11,
     color: '#64748b',
     fontWeight: '600',
   },
-  viewsCount: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
-    marginBottom: 8,
-  },
-  platformRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  platformName: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  platformCount: {
-    fontSize: 14,
-    color: '#1e293b',
-    fontWeight: '600',
+  snapshotValue: {
+    marginTop: 6,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1e3a8a',
   },
   section: {
-    marginBottom: 20,
+    gap: 12,
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1e293b',
-    marginBottom: 12,
   },
-  creatorsGrid: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  creatorCard: {
+  card: {
     backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    padding: 14,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  cardDescription: {
+    marginTop: 6,
+    color: '#64748b',
+    lineHeight: 20,
+    fontSize: 13,
+  },
+  button: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: '#2563eb',
     borderRadius: 10,
-    padding: 10,
-    width: 110,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
   },
-  creatorImage: {
-    width: '100%',
-    aspectRatio: 1,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 6,
-    marginBottom: 6,
+  buttonHighlight: {
+    backgroundColor: '#1d4ed8',
   },
-  creatorName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1e293b',
+  buttonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
   },
-  creatorViews: {
-    fontSize: 11,
-    color: '#475569',
-  },
-  creatorPlatform: {
-    fontSize: 11,
-    color: '#94a3b8',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#94a3b8',
-  },
-  moreButton: {
-    alignSelf: 'center',
+  activityCard: {
     backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
   },
-  errorText: {
-    fontSize: 14,
-    color: '#ef4444',
+  activityItem: {
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 18,
+  },
+  utilityRow: {
+    marginTop: 16,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingHorizontal: 4,
+  },
+  utilityLink: {
+    color: '#1d4ed8',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

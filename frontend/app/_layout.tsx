@@ -7,16 +7,12 @@ import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useFonts } from 'expo-font';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-reanimated';
 import './global.css';
 
 import { SavedGeofenceBootstrap } from '@/components/SavedGeofenceBootstrap';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import {
-  AUTH_ACCESS_KEY,
-  BUSINESS_ACCESS_KEY,
-} from '@/lib/auth-config';
+import { getSessionState, setLastActiveRole } from '@/lib/session';
 import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -34,7 +30,7 @@ function getRequiredSession(pathname: string | null): 'public' | 'customer' | 'b
   if (!pathname || PUBLIC_PATHS.has(pathname)) {
     return 'public';
   }
-  if (pathname === '/business' || pathname.startsWith('/business/') || pathname === '/home') {
+  if (pathname === '/business' || pathname.startsWith('/business/')) {
     return 'business';
   }
   return 'customer';
@@ -60,18 +56,22 @@ export default function RootLayout() {
       }
 
       if (required === 'business') {
-        const token = await AsyncStorage.getItem(BUSINESS_ACCESS_KEY);
-        if (!token) {
+        const session = await getSessionState();
+        if (!session.hasBusinessSession) {
           router.replace('/business-auth');
+        } else {
+          await setLastActiveRole('business');
         }
         if (active) setIsCheckingAuth(false);
         return;
       }
 
-      const customerToken = await AsyncStorage.getItem(AUTH_ACCESS_KEY);
-      if (!customerToken) {
+      const session = await getSessionState();
+      if (!session.hasCustomerSession) {
         await stopSavedBusinessGeofences();
         router.replace('/auth');
+      } else {
+        await setLastActiveRole('customer');
       }
       if (active) setIsCheckingAuth(false);
     }

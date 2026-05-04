@@ -2,8 +2,11 @@ import { Image } from 'expo-image';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import * as Linking from 'expo-linking';
 
 import { useSavedBusinesses } from '@/hooks/useSavedBusinesses';
+import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
+import { EmptyState } from '@/components/customer/ScreenState';
 
 export default function SavedScreen() {
   const { savedBusinesses, loading: savedLoading, isSaved, toggleSaved } = useSavedBusinesses();
@@ -11,20 +14,27 @@ export default function SavedScreen() {
     null
   );
 
+  const handleDirections = async () => {
+    if (!selectedBusiness) return;
+    const url = `https://maps.google.com/?q=${selectedBusiness.lat},${selectedBusiness.lng}`;
+    await Linking.openURL(url);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Saved Businesses</Text>
-        <Text style={styles.subtitle}>{savedBusinesses.length} saved</Text>
+        <CustomerScreenHeader
+          title="Saved Businesses"
+          subtitle={`${savedBusinesses.length} saved. Tap a card to view details.`}
+        />
       </View>
 
       {savedBusinesses.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="heart-outline" size={30} color="#64748B" />
-          <Text style={styles.emptyTitle}>No saved businesses yet</Text>
-          <Text style={styles.emptyText}>
-            Tap the heart icon on a business in Explore to add it here.
-          </Text>
+          <EmptyState
+            title="No saved businesses yet"
+            subtitle="Tap the heart icon on a business in Explore to add it here."
+          />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
@@ -90,7 +100,7 @@ export default function SavedScreen() {
                   </Text>
                   <Text style={styles.modalInfo}>97 West Fordham Road, Bronx</Text>
                   <Text style={styles.modalInfo}>(212) 555-0111</Text>
-                  <Pressable style={styles.ctaButton}>
+                  <Pressable style={styles.ctaButton} onPress={handleDirections}>
                     <Text style={styles.ctaText}>Get Directions</Text>
                   </Pressable>
                 </View>
@@ -111,20 +121,10 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 10,
+    paddingBottom: 2,
     borderBottomWidth: 1,
     borderBottomColor: '#E6EAF1',
     backgroundColor: '#FFFFFF',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    color: '#64748B',
   },
   list: {
     padding: 14,
@@ -186,18 +186,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    marginTop: 10,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  emptyText: {
-    marginTop: 6,
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#64748B',
   },
   modalBackdrop: {
     flex: 1,

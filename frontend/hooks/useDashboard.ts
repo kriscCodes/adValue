@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE, BUSINESS_ACCESS_KEY } from '@/lib/auth-config';
+import { router } from 'expo-router';
+import { API_BASE, BUSINESS_ACCESS_KEY, BUSINESS_REFRESH_KEY } from '@/lib/auth-config';
 
 export interface DashboardCreator {
   content_id: number;
@@ -28,21 +29,42 @@ export function useDashboard() {
   useEffect(() => {
     let active = true;
 
+    async function redirectHomeForTokenIssue() {
+      await AsyncStorage.multiRemove([BUSINESS_ACCESS_KEY, BUSINESS_REFRESH_KEY]);
+      router.replace('/');
+    }
+
     async function fetchDashboard() {
       try {
         const token = await AsyncStorage.getItem(BUSINESS_ACCESS_KEY);
         if (!token) {
-          if (active) setError('Not authenticated');
+          await redirectHomeForTokenIssue();
           return;
         }
         const res = await fetch(`${API_BASE}/api/auth/business/dashboard/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        const data = await res.json().catch(() => null);
+
+        const message = String(data?.error ?? data?.detail ?? '').toLowerCase();
+        const isTokenIssue =
+          res.status === 401 ||
+          res.status === 403 ||
+          message.includes('token') ||
+          message.includes('expired') ||
+          message.includes('unauthorized') ||
+          message.includes('not authenticated');
+
+        if (isTokenIssue) {
+          await redirectHomeForTokenIssue();
+          return;
+        }
+
         if (!res.ok) {
           if (active) setError('Failed to load dashboard');
           return;
         }
-        const json: DashboardData = await res.json();
+        const json: DashboardData = data as DashboardData;
         if (active) setData(json);
       } catch {
         if (active) setError('Network error');

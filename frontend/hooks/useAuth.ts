@@ -4,11 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-
-// refactor this to exist in .env files
-const API_BASE = 'http://127.0.0.1:8000';
-const AUTH_ACCESS_KEY = 'auth_access';
-const AUTH_REFRESH_KEY = 'auth_refresh';
+import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
+import { setLastActiveRole } from '@/lib/session';
 
 function getGoogleOAuthRedirectUri(): string {
   if (Platform.OS === 'web') {
@@ -121,7 +118,8 @@ export function useAuth() {
         [AUTH_ACCESS_KEY, data.access],
         [AUTH_REFRESH_KEY, data.refresh],
       ]);
-      router.replace({ pathname: '/customer-profile' });
+      await setLastActiveRole('customer');
+      router.replace({ pathname: '/home' });
     } catch {
       setError('Network error');
     } finally {
@@ -194,7 +192,8 @@ export function useAuth() {
       [AUTH_ACCESS_KEY, data.access],
       [AUTH_REFRESH_KEY, data.refresh],
     ]);
-    router.replace({ pathname: '/customer-profile' });
+    await setLastActiveRole('customer');
+    router.replace({ pathname: '/home' });
     return true;
   };
 

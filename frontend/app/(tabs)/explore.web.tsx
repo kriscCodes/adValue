@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -57,6 +58,10 @@ export default function ExploreScreenWeb() {
   const [userLatLng, setUserLatLng] = useState<[number, number] | null>(null);
   const explorePlaces = useExplorePlaces();
   const { loading: savedLoading, isSaved, toggleSaved } = useSavedBusinesses();
+  const openDirections = async (business: Business) => {
+    const url = `https://maps.google.com/?q=${business.lat},${business.lng}`;
+    await Linking.openURL(url);
+  };
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -179,9 +184,6 @@ export default function ExploreScreenWeb() {
         <View style={styles.cardsOverlay} pointerEvents="box-none">
           <View style={styles.cardsHeader}>
             <Text style={styles.cardsTitle}>Nearby in The Bronx</Text>
-            <Pressable>
-              <Text style={styles.viewAll}>View All</Text>
-            </Pressable>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {filteredBusinesses.map((business) => (
@@ -235,7 +237,7 @@ export default function ExploreScreenWeb() {
                     {selectedBusiness.address ?? '97 West Fordham Road, Bronx'}
                   </Text>
                   <Text style={styles.modalInfo}>(212) 555-0111</Text>
-                  <Pressable style={styles.ctaButton}>
+                  <Pressable style={styles.ctaButton} onPress={() => openDirections(selectedBusiness)}>
                     <Text style={styles.ctaText}>Get Directions</Text>
                   </Pressable>
                 </View>
@@ -311,11 +313,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#111827',
-  },
-  viewAll: {
-    color: '#2563EB',
-    fontWeight: '700',
-    fontSize: 12,
   },
   card: {
     width: 230,

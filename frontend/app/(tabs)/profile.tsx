@@ -11,13 +11,14 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { router, Href } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE, AUTH_ACCESS_KEY, AUTH_REFRESH_KEY } from '@/lib/auth-config';
 import { stopSavedBusinessGeofences } from '@/lib/sync-saved-geofences';
 import { Feather } from '@expo/vector-icons';
+import { CustomerScreenHeader } from '@/components/customer/CustomerScreenHeader';
+import { clearAllSessions, clearCustomerSession } from '@/lib/session';
 
 type Profile = {
   id: number;
@@ -63,7 +64,6 @@ function AnimatedToggle({ value, onToggle }: AnimatedToggleProps) {
 }
 
 export default function ProfileTab() {
-  const [searchQuery, setSearchQuery] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -130,11 +130,14 @@ export default function ProfileTab() {
     );
   }
 
-  const showInlineNav = Platform.OS !== 'web';
   const handleSignOut = async () => {
-    await AsyncStorage.multiRemove([AUTH_ACCESS_KEY, AUTH_REFRESH_KEY]);
+    await clearCustomerSession();
     await stopSavedBusinessGeofences();
     router.replace('/auth' as Href);
+  };
+  const handleSignOutAll = async () => {
+    await clearAllSessions();
+    router.replace('/role-select' as Href);
   };
   const handleSaveChanges = async () => {
     setError(null);
@@ -186,37 +189,35 @@ export default function ProfileTab() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {showInlineNav ? (
-        <View style={styles.navbar}>
-          <Text style={styles.logo}>adValue</Text>
-          <View style={styles.searchBar}>
-            <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
-            <TextInput
-              placeholder="Search The Bronx..."
-              placeholderTextColor="#94a3b8"
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-          <View style={styles.navIcons}>
-            <View style={styles.navItem}>
-              <Feather name="compass" size={20} color="#64748b" />
-              <Text style={styles.navText}>Explore</Text>
-            </View>
-            <View style={styles.navItem}>
-              <Feather name="bookmark" size={20} color="#64748b" />
-              <Text style={styles.navText}>Saved</Text>
-            </View>
-            <View style={styles.avatarCircle} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <CustomerScreenHeader
+          title={profile ? `${profile.first_name} ${profile.last_name}` : 'Customer Profile'}
+          subtitle="Manage your account settings and continue your submission workflow."
+        />
+
+        <View style={styles.quickActionsCard}>
+          <Text style={styles.cardTitle}>Submission Workflow</Text>
+          <View style={styles.quickActionRow}>
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => router.push('/customer-verification-form' as Href)}
+            >
+              <Text style={styles.quickActionText}>Verification</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => router.push('/content-status' as Href)}
+            >
+              <Text style={styles.quickActionText}>Content Status</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => router.push('/rewards' as Href)}
+            >
+              <Text style={styles.quickActionText}>Rewards</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      ) : null}
-
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.headerName}>
-          {profile ? `${profile.first_name} ${profile.last_name}` : 'Customer Profile'}
-        </Text>
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -302,6 +303,9 @@ export default function ProfileTab() {
           <Feather name="log-out" size={18} color="#475569" style={{ marginRight: 8 }} />
           <Text style={styles.signOutText}>Sign Out of adValue</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.signOutAllButton} onPress={handleSignOutAll}>
+          <Text style={styles.signOutAllText}>Sign Out of All Roles</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -310,67 +314,40 @@ export default function ProfileTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f7ff',
-  },
-  navbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  logo: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1e40af',
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    marginHorizontal: 15,
-    paddingHorizontal: 12,
-    height: 36,
-    borderRadius: 8,
-  },
-  searchInput: {
-    fontSize: 14,
-    flex: 1,
-    color: '#64748b',
-  },
-  navIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  navText: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#64748b',
-    display: 'none',
-  },
-  avatarCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#fb923c',
+    backgroundColor: '#f8fbff',
   },
   scrollContent: {
-    padding: 24,
+    padding: 16,
     alignItems: 'center',
   },
-  headerName: {
-    fontSize: 28,
+  quickActionsCard: {
+    width: '100%',
+    maxWidth: 500,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderColor: '#dbeafe',
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 20,
+  },
+  quickActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  quickActionButton: {
+    flex: 1,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  quickActionText: {
+    color: '#1d4ed8',
+    fontSize: 12,
     fontWeight: '700',
-    color: '#1e293b',
-    marginVertical: 40,
   },
   card: {
     backgroundColor: '#fff',
@@ -512,5 +489,14 @@ const styles = StyleSheet.create({
   signOutText: {
     color: '#475569',
     fontWeight: '500',
+  },
+  signOutAllButton: {
+    marginBottom: 44,
+  },
+  signOutAllText: {
+    color: '#1d4ed8',
+    fontSize: 12,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });

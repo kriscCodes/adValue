@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { API_BASE, BUSINESS_ACCESS_KEY, BUSINESS_REFRESH_KEY } from '@/lib/auth-config';
+import { clearAllSessions, clearBusinessSession } from '@/lib/session';
 
 type BusinessProfile = {
   id: number;
@@ -139,8 +140,12 @@ export default function BusinessProfileScreen() {
   };
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove([BUSINESS_ACCESS_KEY, BUSINESS_REFRESH_KEY]);
+    await clearBusinessSession();
     router.replace('/business-auth');
+  };
+  const handleLogoutAll = async () => {
+    await clearAllSessions();
+    router.replace('/role-select');
   };
 
   if (loading) {
@@ -251,6 +256,9 @@ export default function BusinessProfileScreen() {
         <TouchableOpacity style={styles.signOutButton} onPress={handleLogout}>
           <Feather name="log-out" size={18} color="#475569" style={{ marginRight: 8 }} />
           <Text style={styles.signOutText}>Sign Out of adValue</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.signOutAllButton} onPress={handleLogoutAll}>
+          <Text style={styles.signOutAllText}>Sign Out of All Roles</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -371,5 +379,14 @@ const styles = StyleSheet.create({
   signOutText: {
     color: '#475569',
     fontWeight: '500',
+  },
+  signOutAllButton: {
+    marginBottom: 40,
+  },
+  signOutAllText: {
+    color: '#1d4ed8',
+    fontSize: 12,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });
