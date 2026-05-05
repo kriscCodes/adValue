@@ -358,50 +358,75 @@ class BusinessDashboardView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
+    VALID_PLATFORMS = {"tiktok", "instagram", "youtube"}
+    VALID_STATUSES = {"pending", "valid", "rejected"}
+
     def get(self, request):
         business = get_business_from_token(request)
         if not business:
             return Response({"error": "Unauthorized."}, status=status.HTTP_401_UNAUTHORIZED)
 
+        # --- Query param filters ---
+        platform_filter = request.query_params.get("platform", "").lower() or None
+        status_filter = request.query_params.get("status", "").lower() or None
+        try:
+            days_filter = int(request.query_params.get("days", 30))
+        except (TypeError, ValueError):
+            days_filter = 30
+
+        if platform_filter and platform_filter not in self.VALID_PLATFORMS:
+            return Response({"error": "Invalid platform."}, status=status.HTTP_400_BAD_REQUEST)
+        if status_filter and status_filter not in self.VALID_STATUSES:
+            return Response({"error": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Base queryset — always scoped to this business
         qs = Content.objects.filter(business_id=business.business_id)
 
-        # Total views per platform
-        platform_totals = (
-            qs.values("platform")
-            .annotate(total=Sum("views"))
-        )
-        total_views = {row["platform"]: row["total"] for row in platform_totals}
+        if platform_filter:
+            qs = qs.filter(platform=platform_filter)
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        if days_filter > 0:
+            qs = qs.filter(submitted_at__gte=timezone.now() - timedelta(days=days_filter))
 
-        # Fill in 0 for platforms with no submissions
-        for p in ("tiktok", "instagram", "youtube"):
+        # Total views per platform (respects status + days filters, not platform filter
+        # so the stats card always shows all platforms for context)
+        stats_qs = Content.objects.filter(business_id=business.business_id)
+        if status_filter:
+            stats_qs = stats_qs.filter(status=status_filter)
+        if days_filter > 0:
+            stats_qs = stats_qs.filter(submitted_at__gte=timezone.now() - timedelta(days=days_filter))
+
+        platform_totals = stats_qs.values("platform").annotate(total=Sum("views"))
+        total_views = {row["platform"]: row["total"] for row in platform_totals}
+        for p in self.VALID_PLATFORMS:
             total_views.setdefault(p, 0)
 
-        # Platforms actually used by this business
-        platforms = list(
-            qs.values_list("platform", flat=True).distinct()
+        # Platforms used by this business (unfiltered, for the tag pills)
+        all_platforms = list(
+            Content.objects.filter(business_id=business.business_id)
+            .values_list("platform", flat=True)
+            .distinct()
         )
 
-        # Views over time — last 30 days
-        since = timezone.now() - timedelta(days=30)
+        # Views over time (filtered)
         views_over_time = list(
-            qs.filter(submitted_at__gte=since)
-            .annotate(date=TruncDate("submitted_at"))
+            qs.annotate(date=TruncDate("submitted_at"))
             .values("date")
             .annotate(total=Sum("views"))
             .order_by("date")
             .values("date", "total")
         )
 
-        # Content submissions with creator name
-        submissions = (
-            qs.select_related("customer")
-            .order_by("-submitted_at")[:20]
-        )
+        # Creator submissions (filtered)
+        submissions = qs.select_related("customer").order_by("-submitted_at")[:50]
         creators = [
             {
                 "content_id": item.content_id,
-                "name": f"{item.customer.customer_first_name} {item.customer.customer_last_name}".strip()
-                        or item.customer.customer_email,
+                "name": (
+                    f"{item.customer.customer_first_name} {item.customer.customer_last_name}".strip()
+                    or item.customer.customer_email
+                ),
                 "platform": item.platform,
                 "views": item.views,
                 "content_url": item.content_url,
@@ -414,13 +439,18 @@ class BusinessDashboardView(APIView):
         return Response(
             {
                 "business_name": business.business_name,
-                "platforms": platforms,
+                "platforms": all_platforms,
                 "total_views": total_views,
                 "views_over_time": [
                     {"date": row["date"].isoformat(), "views": row["total"]}
                     for row in views_over_time
                 ],
                 "creators": creators,
+                "active_filters": {
+                    "platform": platform_filter,
+                    "status": status_filter,
+                    "days": days_filter,
+                },
             },
             status=status.HTTP_200_OK,
         )
