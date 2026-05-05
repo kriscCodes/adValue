@@ -75,7 +75,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:19006',
 
     #railway
-    'comfortable-love-production-3f3c.up.railway.app',
+    'https://comfortable-love-production-3f3c.up.railway.app',
     'https://scintillating-compassion-production-a273.up.railway.app',
 ]
 # to make sure auth is required by default for all views/apis
