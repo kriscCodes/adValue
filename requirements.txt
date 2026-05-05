@@ -1,5 +1,4 @@
 absl-py==2.3.1
-altgraph==0.17.2
 asgiref==3.9.1
 astunparse==1.6.3
 certifi==2025.7.14
@@ -22,7 +21,6 @@ idna==3.10
 importlib_metadata==8.7.0
 keras==3.10.0
 libclang==18.1.1
-macholib==1.15.2
 Markdown==3.8.2
 markdown-it-py==3.0.0
 MarkupSafe==3.0.2
