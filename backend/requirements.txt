@@ -8,3 +8,4 @@ djangorestframework-simplejwt
 pymysql
 google-auth
 requests
+gunicorn
