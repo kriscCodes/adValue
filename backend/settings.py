@@ -33,7 +33,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "advalue-production.up.railway.app",
+    "comfortable-love-production-3f3c.up.railway.app",
     "scintillating-compassion-production-a273.up.railway.app",
 ]
 
@@ -75,7 +75,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:19006',
 
     #railway
-    'https://advalue-production.up.railway.app',
+    'comfortable-love-production-3f3c.up.railway.app',
     'https://scintillating-compassion-production-a273.up.railway.app',
 ]
 # to make sure auth is required by default for all views/apis

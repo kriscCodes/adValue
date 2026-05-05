@@ -31,6 +31,13 @@ type HomeAction = {
   cta: string;
 };
 
+type ActivityItem = {
+  id: string;
+  title: string;
+  detail: string;
+  tone: 'success' | 'pending' | 'neutral';
+};
+
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -126,16 +133,28 @@ export default function HomeScreen() {
     },
   ];
 
-  const submissionActivity = submissions
-    .slice()
-    .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
-    .slice(0, 2)
-    .map(
-      (item) =>
-        `Submission #${item.content_id} (${item.platform}) is ${item.status === 'valid' ? 'approved' : item.status}.`,
-    );
-  const rewardActivity = rewards.slice(0, 1).map((item) => `Reward available: ${item.offer} at ${item.shop}.`);
-  const activity = [...rewardActivity, ...submissionActivity].slice(0, 3);
+  const activity: ActivityItem[] = [
+    ...submissions
+      .slice()
+      .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
+      .slice(0, 2)
+      .map((item) => {
+        const isApproved = item.status === 'valid';
+        const isPending = item.status === 'pending';
+        return {
+          id: `submission-${item.content_id}`,
+          title: `Submission #${item.content_id} (${item.platform})`,
+          detail: isApproved ? 'Approved and ready for rewards' : isPending ? 'Waiting for business review' : 'Needs attention',
+          tone: isApproved ? 'success' : isPending ? 'pending' : 'neutral',
+        };
+      }),
+    ...rewards.slice(0, 1).map((item) => ({
+      id: `reward-${item.reward_id}`,
+      title: 'Reward ready to use',
+      detail: `${item.offer} at ${item.shop}`,
+      tone: 'success' as const,
+    })),
+  ].slice(0, 3);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -186,29 +205,34 @@ export default function HomeScreen() {
           {activity.length === 0 ? (
             <EmptyState
               title="No activity yet"
-              subtitle="No activity yet — start by submitting a verification."
+              subtitle="Start by submitting a verification to see updates here."
             />
           ) : (
             <View style={styles.activityCard}>
               {activity.map((entry) => (
-                <Text key={entry} style={styles.activityItem}>
-                  - {entry}
-                </Text>
+                <View key={entry.id} style={styles.activityRow}>
+                  <View style={styles.activityTextWrap}>
+                    <Text style={styles.activityTitle}>{entry.title}</Text>
+                    <Text style={styles.activityDetail}>{entry.detail}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.activityBadge,
+                      entry.tone === 'success'
+                        ? styles.activityBadgeSuccess
+                        : entry.tone === 'pending'
+                          ? styles.activityBadgePending
+                          : styles.activityBadgeNeutral,
+                    ]}
+                  >
+                    <Text style={styles.activityBadgeText}>
+                      {entry.tone === 'success' ? 'Approved' : entry.tone === 'pending' ? 'Pending' : 'Update'}
+                    </Text>
+                  </View>
+                </View>
               ))}
             </View>
           )}
-        </View>
-
-        <View style={styles.utilityRow}>
-          <Pressable onPress={() => router.push('/explore')}>
-            <Text style={styles.utilityLink}>Explore Businesses</Text>
-          </Pressable>
-          <Pressable onPress={() => router.push('/saved')}>
-            <Text style={styles.utilityLink}>Saved Places</Text>
-          </Pressable>
-          <Pressable onPress={() => router.push('/profile')}>
-            <Text style={styles.utilityLink}>Profile Settings</Text>
-          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -297,24 +321,49 @@ const styles = StyleSheet.create({
     borderColor: '#dbeafe',
     borderRadius: 12,
     padding: 14,
-    gap: 8,
+    gap: 12,
   },
-  activityItem: {
-    fontSize: 13,
-    color: '#334155',
-    lineHeight: 18,
-  },
-  utilityRow: {
-    marginTop: 16,
-    marginBottom: 8,
+  activityRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    paddingHorizontal: 4,
   },
-  utilityLink: {
-    color: '#1d4ed8',
-    fontSize: 12,
+  activityTextWrap: {
+    flex: 1,
+    gap: 3,
+  },
+  activityTitle: {
+    fontSize: 13,
     fontWeight: '700',
+    color: '#1f2937',
+  },
+  activityDetail: {
+    fontSize: 12,
+    color: '#64748b',
+    lineHeight: 17,
+  },
+  activityBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  activityBadgeSuccess: {
+    borderColor: '#86efac',
+    backgroundColor: '#f0fdf4',
+  },
+  activityBadgePending: {
+    borderColor: '#fde68a',
+    backgroundColor: '#fffbeb',
+  },
+  activityBadgeNeutral: {
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
+  },
+  activityBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
   },
 });
