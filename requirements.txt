@@ -1,5 +1,5 @@
 absl-py==2.3.1
-altgraph @ file:///AppleInternal/Library/BuildRoots/4~CGYkugDNMJDPussZJfa8Q7q7wDj7yZMIh_VI6H4/Library/Caches/com.apple.xbs/Sources/python3/altgraph-0.17.2-py2.py3-none-any.whl
+altgraph==0.17.2
 asgiref==3.9.1
 astunparse==1.6.3
 certifi==2025.7.14
@@ -12,7 +12,7 @@ django-cors-headers==4.9.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 flatbuffers==25.2.10
-future @ file:///AppleInternal/Library/BuildRoots/4~CGYkugDNMJDPussZJfa8Q7q7wDj7yZMIh_VI6H4/Library/Caches/com.apple.xbs/Sources/python3/future-0.18.2-py3-none-any.whl
+future==0.18.2
 gast==0.6.0
 google-auth==2.49.1
 google-pasta==0.2.0
@@ -22,7 +22,7 @@ idna==3.10
 importlib_metadata==8.7.0
 keras==3.10.0
 libclang==18.1.1
-macholib @ file:///AppleInternal/Library/BuildRoots/4~CGYkugDNMJDPussZJfa8Q7q7wDj7yZMIh_VI6H4/Library/Caches/com.apple.xbs/Sources/python3/macholib-1.15.2-py2.py3-none-any.whl
+macholib==1.15.2
 Markdown==3.8.2
 markdown-it-py==3.0.0
 MarkupSafe==3.0.2
@@ -47,7 +47,7 @@ python-dotenv==1.2.1
 pytz==2025.2
 requests==2.32.4
 rich==14.0.0
-six @ file:///AppleInternal/Library/BuildRoots/4~CGYkugDNMJDPussZJfa8Q7q7wDj7yZMIh_VI6H4/Library/Caches/com.apple.xbs/Sources/python3/six-1.15.0-py2.py3-none-any.whl
+six==1.15.0
 sqlparse==0.5.3
 tensorboard==2.19.0
 tensorboard-data-server==0.7.2
