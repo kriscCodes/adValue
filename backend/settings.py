@@ -68,6 +68,10 @@ CORS_ALLOWED_ORIGINS = [
     # Expo web
     'http://localhost:19006',
     'http://127.0.0.1:19006',
+
+    #railway
+    'https://advalue-production.up.railway.app/'
+    'https://scintillating-compassion-production-a273.up.railway.app/'
 ]
 # to make sure auth is required by default for all views/apis
 REST_FRAMEWORK = {
