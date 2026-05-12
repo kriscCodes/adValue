@@ -12,7 +12,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from .models import Business, Content, SavedBusiness
+from .models import Business, Content, Report, SavedBusiness
 
 # This fetched customer model
 User = get_user_model() 
@@ -519,3 +519,130 @@ class RewardsView(APIView):
             )
 
         return Response({"rewards": rewards}, status=status.HTTP_200_OK)
+
+
+class CustomerReportableBusinessesView(APIView):
+    """List businesses this customer has submitted content for; valid targets for a report."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        business_ids = (
+            Content.objects.filter(customer=request.user)
+            .values_list("business_id", flat=True)
+            .distinct()
+        )
+        businesses = Business.objects.filter(business_id__in=list(business_ids)).order_by("business_name")
+        return Response(
+            {
+                "businesses": [
+                    {
+                        "business_id": item.business_id,
+                        "business_name": item.business_name,
+                        "business_address": item.business_address,
+                    }
+                    for item in businesses
+                ]
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class CustomerReportsView(APIView):
+    """Customer files a report against a business they have submitted content for."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        reports = (
+            Report.objects.filter(
+                reporter_type=Report.ReporterType.CUSTOMER,
+                reporter_customer=request.user,
+            )
+            .select_related("target_business")
+            .order_by("-created_at")
+        )
+        return Response(
+            {
+                "reports": [
+                    {
+                        "report_id": r.report_id,
+                        "target_business_id": r.target_business_id,
+                        "target_business_name": (
+                            r.target_business.business_name if r.target_business else None
+                        ),
+                        "reason_code": r.reason_code,
+                        "details": r.details,
+                        "status": r.status,
+                        "created_at": r.created_at.isoformat(),
+                    }
+                    for r in reports
+                ]
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        target_business_id = request.data.get("target_business_id")
+        reason_code = request.data.get("reason_code")
+        details = (request.data.get("details") or "").strip()
+
+        if target_business_id is None or not reason_code:
+            return Response(
+                {"error": "target_business_id and reason_code are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_business_id = int(target_business_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "target_business_id must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if reason_code not in {c.value for c in Report.CUSTOMER_REASONS}:
+            return Response(
+                {"error": "reason_code is not valid for a customer-filed report."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_business = Business.objects.get(business_id=target_business_id)
+        except Business.DoesNotExist:
+            return Response(
+                {"error": "Target business not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        has_submission = Content.objects.filter(
+            customer=request.user,
+            business_id=target_business_id,
+        ).exists()
+        if not has_submission:
+            return Response(
+                {"error": "You can only report a business you've submitted content for."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        report = Report.objects.create(
+            reporter_type=Report.ReporterType.CUSTOMER,
+            reporter_customer=request.user,
+            target_type=Report.TargetType.BUSINESS,
+            target_business=target_business,
+            reason_code=reason_code,
+            details=details,
+        )
+
+        return Response(
+            {
+                "report_id": report.report_id,
+                "target_business_id": target_business.business_id,
+                "target_business_name": target_business.business_name,
+                "reason_code": report.reason_code,
+                "details": report.details,
+                "status": report.status,
+                "created_at": report.created_at.isoformat(),
+            },
+            status=status.HTTP_201_CREATED,
+        )

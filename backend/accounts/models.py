@@ -147,3 +147,85 @@ class ExplorePlace(models.Model):
 
     class Meta:
         db_table = "ExplorePlace"
+
+
+class Report(models.Model):
+    """Customer-on-business or business-on-customer report.
+
+    Reporter is one of (customer, business); target is the other.
+    Reason codes are scoped to who is reporting whom.
+    """
+
+    class ReporterType(models.TextChoices):
+        CUSTOMER = "customer", "Customer"
+        BUSINESS = "business", "Business"
+
+    class TargetType(models.TextChoices):
+        CUSTOMER = "customer", "Customer"
+        BUSINESS = "business", "Business"
+
+    class ReasonCode(models.TextChoices):
+        # Customer-side reasons (customer reports a business)
+        VERIFICATION_OVERDUE = "verification_overdue", "Business hasn't verified content in over a week"
+        REWARDS_NOT_ISSUED = "rewards_not_issued", "Business hasn't issued rewards after view threshold"
+        # Business-side reasons (business reports a customer)
+        LOW_QUALITY_CONTENT = "low_quality_content", "Customer submits low quality videos"
+        VIEWS_MILESTONE_UNMET = "views_milestone_unmet", "Videos clearly don't meet the milestone"
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Open"
+        REVIEWING = "reviewing", "Reviewing"
+        RESOLVED = "resolved", "Resolved"
+        DISMISSED = "dismissed", "Dismissed"
+
+    CUSTOMER_REASONS = {ReasonCode.VERIFICATION_OVERDUE, ReasonCode.REWARDS_NOT_ISSUED}
+    BUSINESS_REASONS = {ReasonCode.LOW_QUALITY_CONTENT, ReasonCode.VIEWS_MILESTONE_UNMET}
+
+    report_id = models.AutoField(primary_key=True)
+
+    reporter_type = models.CharField(max_length=20, choices=ReporterType.choices)
+    reporter_customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reports_filed",
+    )
+    reporter_business = models.ForeignKey(
+        Business,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reports_filed",
+    )
+
+    target_type = models.CharField(max_length=20, choices=TargetType.choices)
+    target_customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reports_received",
+    )
+    target_business = models.ForeignKey(
+        Business,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reports_received",
+    )
+
+    reason_code = models.CharField(max_length=40, choices=ReasonCode.choices)
+    details = models.TextField(blank=True, default="")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "Report"
+        indexes = [
+            models.Index(fields=["reporter_type", "reporter_customer"]),
+            models.Index(fields=["reporter_type", "reporter_business"]),
+            models.Index(fields=["target_type", "target_customer"]),
+            models.Index(fields=["target_type", "target_business"]),
+        ]
