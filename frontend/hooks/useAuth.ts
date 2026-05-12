@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
@@ -9,7 +9,10 @@ import { setLastActiveRole } from '@/lib/session';
 
 function getGoogleOAuthRedirectUri(): string {
   if (Platform.OS === 'web') {
-    return AuthSession.makeRedirectUri();
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/auth`;
+    }
+    return 'http://localhost:8081/auth';
   }
 
   const proxyOverride = process.env.EXPO_PUBLIC_EXPO_AUTH_PROXY_REDIRECT_URI;
@@ -35,13 +38,6 @@ if (__DEV__ && Platform.OS === 'web') {
     GOOGLE_REDIRECT_URI,
   );
 }
-
-const GOOGLE_NONCE = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const GOOGLE_DISCOVERY = {
-  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint: 'https://oauth2.googleapis.com/token',
-  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-};
 
 type AuthMode = 'login' | 'signup';
 
@@ -75,26 +71,41 @@ export function useAuth() {
     setState((prev) => ({ ...prev, error }));
   };
 
-  const [request, , promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId:
-        process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-        process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
-        process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
-        '',
+  const sendIdTokenToBackend = async (idToken: string): Promise<boolean> => {
+    const res = await fetch(`${API_BASE}/api/auth/google/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_token: idToken }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || 'Google login failed');
+      return false;
+    }
 
-      responseType: AuthSession.ResponseType.IdToken,
+    await AsyncStorage.multiSet([
+      [AUTH_ACCESS_KEY, data.access],
+      [AUTH_REFRESH_KEY, data.refresh],
+    ]);
+    await setLastActiveRole('customer');
+    router.replace({ pathname: '/home' });
+    return true;
+  };
 
-      usePKCE: false,
-
-      extraParams: {
-        nonce: GOOGLE_NONCE,
-      },
-      scopes: ['openid', 'profile', 'email'],
-      redirectUri: GOOGLE_REDIRECT_URI,
-    },
-    GOOGLE_DISCOVERY,
-  );
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (!hash) return;
+    const params = new URLSearchParams(hash.slice(1));
+    const idToken = params.get('id_token');
+    if (!idToken) return;
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setState((prev) => ({ ...prev, loading: true }));
+    sendIdTokenToBackend(idToken).finally(() =>
+      setState((prev) => ({ ...prev, loading: false })),
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogin = async (): Promise<void> => {
     setError('');
@@ -176,46 +187,21 @@ export function useAuth() {
     setError('');
   };
 
-  const sendIdTokenToBackend = async (idToken: string): Promise<boolean> => {
-    const res = await fetch(`${API_BASE}/api/auth/google/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_token: idToken }),
+  const handleGoogleLoginWeb = (): void => {
+    const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    if (!clientId) {
+      setError('Google sign-in is not configured.');
+      return;
+    }
+    const nonce = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: GOOGLE_REDIRECT_URI,
+      response_type: 'id_token',
+      scope: 'openid profile email',
+      nonce,
     });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || 'Google login failed');
-      return false;
-    }
-
-    await AsyncStorage.multiSet([
-      [AUTH_ACCESS_KEY, data.access],
-      [AUTH_REFRESH_KEY, data.refresh],
-    ]);
-    await setLastActiveRole('customer');
-    router.replace({ pathname: '/home' });
-    return true;
-  };
-
-  const handleGoogleLoginWeb = async (): Promise<void> => {
-    if (!request) {
-      setError('Google sign-in is not ready. Please try again.');
-      return;
-    }
-
-    const result = await promptAsync();
-    if (result.type !== 'success') {
-      setError('Google sign-in was canceled.');
-      return;
-    }
-
-    const idToken = result.params?.id_token;
-    if (!idToken) {
-      setError('Google sign-in failed to return an ID token.');
-      return;
-    }
-
-    await sendIdTokenToBackend(idToken);
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   };
 
   const handleGoogleLoginNative = async (): Promise<void> => {
@@ -269,7 +255,7 @@ export function useAuth() {
     } catch (e: unknown) {
       if (Platform.OS !== 'web') {
         const { statusCodes, isErrorWithCode } = await import('@react-native-google-signin/google-signin');
-        if (isErrorWithCode(e) && e.code === statusCodes.SIGN_IN_CANCELLED) {
+        if (typeof isErrorWithCode === 'function' && isErrorWithCode(e) && (e as any).code === statusCodes.SIGN_IN_CANCELLED) {
           setError('Google sign-in was canceled.');
           return;
         }
