@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 
-from .models import Business, Content
+from .models import Business, Content, Customer, Report
 
 
 def get_tokens_for_business(business):
@@ -453,4 +453,148 @@ class BusinessDashboardView(APIView):
                 },
             },
             status=status.HTTP_200_OK,
+        )
+
+
+class BusinessReportableCustomersView(APIView):
+    """List customers who submitted content for this business; valid targets for a report."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        business = get_business_from_token(request)
+        if not business:
+            return Response({"error": "Unauthorized."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        customer_ids = (
+            Content.objects.filter(business_id=business.business_id)
+            .values_list("customer_id", flat=True)
+            .distinct()
+        )
+        customers = Customer.objects.filter(customer_id__in=list(customer_ids)).order_by(
+            "customer_first_name", "customer_last_name"
+        )
+        return Response(
+            {
+                "customers": [
+                    {
+                        "customer_id": c.customer_id,
+                        "customer_email": c.customer_email,
+                        "customer_first_name": c.customer_first_name,
+                        "customer_last_name": c.customer_last_name,
+                    }
+                    for c in customers
+                ]
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class BusinessReportsView(APIView):
+    """Business files a report against a customer who has submitted content for them."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        business = get_business_from_token(request)
+        if not business:
+            return Response({"error": "Unauthorized."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        reports = (
+            Report.objects.filter(
+                reporter_type=Report.ReporterType.BUSINESS,
+                reporter_business=business,
+            )
+            .select_related("target_customer")
+            .order_by("-created_at")
+        )
+        return Response(
+            {
+                "reports": [
+                    {
+                        "report_id": r.report_id,
+                        "target_customer_id": r.target_customer_id,
+                        "target_customer_email": (
+                            r.target_customer.customer_email if r.target_customer else None
+                        ),
+                        "reason_code": r.reason_code,
+                        "details": r.details,
+                        "status": r.status,
+                        "created_at": r.created_at.isoformat(),
+                    }
+                    for r in reports
+                ]
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        business = get_business_from_token(request)
+        if not business:
+            return Response({"error": "Unauthorized."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        target_customer_id = request.data.get("target_customer_id")
+        reason_code = request.data.get("reason_code")
+        details = (request.data.get("details") or "").strip()
+
+        if target_customer_id is None or not reason_code:
+            return Response(
+                {"error": "target_customer_id and reason_code are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_customer_id = int(target_customer_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "target_customer_id must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if reason_code not in {c.value for c in Report.BUSINESS_REASONS}:
+            return Response(
+                {"error": "reason_code is not valid for a business-filed report."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_customer = Customer.objects.get(customer_id=target_customer_id)
+        except Customer.DoesNotExist:
+            return Response(
+                {"error": "Target customer not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        has_submission = Content.objects.filter(
+            business_id=business.business_id,
+            customer=target_customer,
+        ).exists()
+        if not has_submission:
+            return Response(
+                {"error": "You can only report a customer who has submitted content for you."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        report = Report.objects.create(
+            reporter_type=Report.ReporterType.BUSINESS,
+            reporter_business=business,
+            target_type=Report.TargetType.CUSTOMER,
+            target_customer=target_customer,
+            reason_code=reason_code,
+            details=details,
+        )
+
+        return Response(
+            {
+                "report_id": report.report_id,
+                "target_customer_id": target_customer.customer_id,
+                "target_customer_email": target_customer.customer_email,
+                "reason_code": report.reason_code,
+                "details": report.details,
+                "status": report.status,
+                "created_at": report.created_at.isoformat(),
+            },
+            status=status.HTTP_201_CREATED,
         )
